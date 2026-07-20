@@ -4,6 +4,7 @@
 # Shared, gateway-agnostic helpers used across the payment gateway logic.
 
 from contextlib import contextmanager
+from urllib.parse import urlencode
 
 import frappe
 from frappe import _
@@ -122,3 +123,64 @@ def get_reference_amount(reference_doctype, reference_docname):
 	if not row:
 		frappe.throw(_("Payment reference {0} no longer exists.").format(reference_docname))
 	return row.get(amount_field), row.get("currency")
+
+
+def is_subscription_reference(data):
+	"""Whether the payment reference is flagged as a subscription (is_a_subscription)."""
+	dt, dn = data.get("reference_doctype"), data.get("reference_docname")
+	if not dt or not dn or not frappe.db.exists(dt, dn):
+		return False
+	if not frappe.get_meta(dt).has_field("is_a_subscription"):
+		return False
+	return bool(frappe.db.get_value(dt, dn, "is_a_subscription"))
+
+
+def success_redirect(metadata=None, reference_doctype=None, reference_docname=None):
+	"""payment-success URL carrying the reference so the success page can load it."""
+	metadata = metadata or {}
+	dt = reference_doctype or metadata.get("reference_doctype")
+	dn = reference_docname or metadata.get("reference_docname")
+	if dt and dn:
+		return f"payment-success?{urlencode({'doctype': dt, 'docname': dn})}"
+	return "payment-success"
+
+
+def settle_payment_request(pr):
+	"""Mark a submitted Payment Request paid and create its Payment Entry.
+
+	Used when the reference does not implement ``on_payment_authorized`` or when
+	that hook alone is not enough.
+	"""
+	if pr.docstatus != 1 or pr.status == "Paid":
+		return
+	if getattr(pr, "payment_channel", None) == "Phone":
+		pr.db_set({"status": "Paid", "outstanding_amount": 0})
+		return
+
+	with erpnext_app_import_guard():
+		from erpnext.accounts.doctype.payment_request.payment_request import (
+			get_existing_payment_entry,
+		)
+
+	if pr.reference_name and get_existing_payment_entry(pr.reference_name):
+		return
+
+	# Guest checkout cannot read/write Sales Invoice / PE; elevate for settlement only.
+	original_user = frappe.session.user
+	try:
+		frappe.set_user("Administrator")  # nosemgrep
+		return pr.set_as_paid()
+	finally:
+		frappe.set_user(original_user)  # nosemgrep
+
+
+def authorize_reference(reference_doctype, reference_docname, status_changed_to):
+	"""Run custom ``on_payment_authorized`` or settle Payment Request."""
+	if not (reference_doctype and reference_docname):
+		return None
+	ref = frappe.get_doc(reference_doctype, reference_docname)
+	if hasattr(ref, "on_payment_authorized"):
+		return ref.run_method("on_payment_authorized", status_changed_to)
+	if ref.doctype == "Payment Request":
+		settle_payment_request(ref)
+	return None

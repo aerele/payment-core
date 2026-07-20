@@ -20,7 +20,11 @@ override_whitelisted_methods = {
 # Apps
 # ------------------
 
-# required_apps = []
+# payment_core delegates payment settlement/reconciliation to ERPNext's
+# Payment Request / Payment Entry doctypes (see utils.settle_payment_request).
+# Declare it so Frappe installs erpnext first and blocks its uninstall while
+# payment_core (or any gateway app built on it) is still installed.
+required_apps = ["erpnext"]
 
 # Each item in the list will be shown as an app in the apps page
 add_to_apps_screen = [
