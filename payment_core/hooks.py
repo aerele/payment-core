@@ -12,7 +12,13 @@ after_install = "payment_core.install.after_install"
 before_uninstall = "payment_core.install.before_uninstall"
 
 # Web Form payment integration (shared across all gateways)
-extend_doctype_class = {"Web Form": "payment_core.overrides.payment_webform.PaymentWebForm"}
+# + Payment Request extension: ERPNext stays pristine while gateway resolution
+# and subscription dispatch route through payment_core
+# (see overrides/payment_request.py).
+extend_doctype_class = {
+	"Web Form": "payment_core.overrides.payment_webform.PaymentWebForm",
+	"Payment Request": "payment_core.overrides.payment_request.PaymentRequest",
+}
 override_whitelisted_methods = {
 	"frappe.website.doctype.web_form.web_form.accept": "payment_core.overrides.payment_webform.accept"
 }
