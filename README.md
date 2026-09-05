@@ -95,3 +95,14 @@ Contributions are welcome. Shared changes should remain provider-neutral and reu
 ## License
 
 This project is licensed under the [MIT License](license.txt).
+
+<br>
+<br>
+<div align="center">
+  <a href="https://aerele.in">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="./payment_core/public/images/aerele-dark.png">
+      <img src="./payment_core/public/images/aerele.png" alt="Aerele Technologies" height="32"/>
+    </picture>
+  </a>
+</div>
