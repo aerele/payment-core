@@ -10,6 +10,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](license.txt)
 </div>
 
+<br>
+<div align="center">
+<img src="payment_core/public/images/payment_core_workflow.jpg" alt="Payment Core Workflow" />
+</div>
+<br>
 <div align="center">
 <a href="https://integrations.frappe.cloud/integrations/payment-integration/payment-core/payment-overview">Documentation</a>
 ·
