@@ -2,14 +2,16 @@
 
 Some key notes before you open a PR:
 
- 1. All PRs are merged into the `develop` branch
- 2. Commit messages follow the [conventional commits](https://www.conventionalcommits.org/) convention (enforced by commitlint in CI)
- 3. All tests pass locally: `bench --site <site> run-tests --app payment_core`
- 4. All business logic and validations must be on the server-side (payable amounts and reference checks are never trusted from the client)
- 5. Update necessary Documentation
- 6. Put `closes #XXXX` in your comment to auto-close the issue that your PR fixes
+ 1. Select which branch should this PR be merged in?
+ 2. PR title and commit messages follow Conventional Commits.
+ 3. Run `pre-commit run --all-files` and ensure the relevant tests pass locally.
+ 4. All business logic and validations must be on the server-side.
+ 5. Keep shared changes provider-neutral; provider-specific behavior belongs in the provider app.
+ 6. Update necessary documentation.
+ 7. Put `closes #XXXX` in your comment to auto-close the issue that your PR fixes.
 
-Also, if you're new here
+
+Also, if you're new here:
 
 - Contribution Guide => https://github.com/aerele/payment-core/blob/develop/.github/CONTRIBUTING.md
 
@@ -25,4 +27,4 @@ Also, if you're new here
 
 > Screenshots/GIFs
 
-<!-- Add images/recordings to better visualize the change: expected/current behaviour -->
+<!-- Add images/recordings to better visualize the change: expected/current behavior -->

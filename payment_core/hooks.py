@@ -1,8 +1,8 @@
 app_name = "payment_core"
 app_title = "Payment Core"
-app_publisher = "Frappe Technologies"
+app_publisher = "Aerele Technologies"
 app_description = "Shared payment gateway core logic for Frappe payment apps"
-app_email = "hello@frappe.io"
+app_email = "integrations-support@aerele.in"
 app_license = "mit"
 
 # Installation

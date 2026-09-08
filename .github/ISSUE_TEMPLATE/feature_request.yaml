@@ -1,36 +1,33 @@
+---
 name: Feature Request
-description: Suggest an idea or enhancement for Payment Core
-labels: ["feature-request"]
+description: Suggest an idea to improve Payment Core
+labels: ["enhancement"]
 
 body:
   - type: markdown
     attributes:
       value: |
-        Welcome to the Payment Core issue tracker! Before creating an issue, please heed the following:
+        Welcome to the Payment Core issue tracker! Before submitting a request, please consider the following:
 
-        1. This tracker should only be used to report bugs and request features / enhancements to Payment Core,
-           the shared core that gateway apps build on
-        2. Please search existing issues before opening a new one. Duplicates will be closed and directed to the original discussion.
-        3. Make your request as detailed as possible. The better you convey your message, the greater the drive to make it happen.
-
-        We can't work on every request. Priorities are guided by the product goals of the app.
+        1. This tracker should only be used to report bugs and request features / enhancements to Payment Core.
+            - For questions and general support, check the [documentation](https://integrations.frappe.cloud/integrations/payment-integration/payment-core/payment-overview) or use the [forum](https://discuss.frappe.io/) to get input from the open source community.
+        2. Use the search function before creating a new issue. Duplicates will be closed and directed to
+           the original discussion.
+        3. Payment Core contains provider-neutral payment contracts and workflows. Provider-specific credentials, APIs, checkout interfaces, webhooks, reconciliation, and branding belong in separate provider apps.
+        4. When making a feature request, make sure to be as detailed as possible. The better you convey your message, the easier it is to evaluate.
 
   - type: textarea
     id: problem-info
     attributes:
       label: Is your feature request related to a problem? Please describe.
-      description: A clear and concise description of what the problem is.
-      placeholder: Ex. I'm always frustrated when [...]
-    validations:
-      required: true
+      description: A clear and concise description of what the problem is. For example, I'm always frustrated when [...]
+      placeholder: Please provide as much information as possible.
 
   - type: textarea
     id: solution-info
     attributes:
       label: Describe the solution you'd like
       description: A clear and concise description of what you want to happen.
-    validations:
-      required: true
 
   - type: textarea
     id: alternatives-info
@@ -42,4 +39,5 @@ body:
     id: additional-info
     attributes:
       label: Additional context
-      description: Add any other context, screenshots, or examples about the feature request here.
+      description: Add any other context or screenshots about the feature request here.
+...
