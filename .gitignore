@@ -10,3 +10,5 @@ build/
 .ruff_cache/
 .idea/
 *.log
+.serena/
+payment_core/public/node_modules
