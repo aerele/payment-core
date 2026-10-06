@@ -11,10 +11,13 @@ before_install = "payment_core.install.before_install"
 after_install = "payment_core.install.after_install"
 before_uninstall = "payment_core.install.before_uninstall"
 
-# Web Form payment integration (shared across all gateways)
-# + Payment Request extension: ERPNext stays pristine while gateway resolution
-# and subscription dispatch route through payment_core
-# (see overrides/payment_request.py).
+# Gateway-only mode: suppress the shared ledger from schema sync, purge leftovers.
+before_migrate = ["payment_core.ledger_gate.suppress_ledger_module"]
+after_migrate = ["payment_core.ledger_gate.purge_ledger"]
+before_app_install = ["payment_core.ledger_gate.suppress_ledger_module"]
+after_sync = ["payment_core.ledger_gate.purge_ledger"]
+
+# Web Form payments, plus the ERPNext-only Payment Request extension.
 extend_doctype_class = {
 	"Web Form": "payment_core.overrides.payment_webform.PaymentWebForm",
 	"Payment Request": "payment_core.overrides.payment_request.PaymentRequest",
@@ -26,11 +29,6 @@ override_whitelisted_methods = {
 # Apps
 # ------------------
 
-# payment_core delegates payment settlement/reconciliation to ERPNext's
-# Payment Request / Payment Entry doctypes (see utils.settle_payment_request).
-# Declare it so Frappe installs erpnext first and blocks its uninstall while
-# payment_core (or any gateway app built on it) is still installed.
-required_apps = ["erpnext"]
 
 # Each item in the list will be shown as an app in the apps page
 add_to_apps_screen = [

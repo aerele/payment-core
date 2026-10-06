@@ -7,6 +7,9 @@ import click
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
+from payment_core.mode import gateway_only_reason, is_gateway_only
+from payment_core.utils import before_install as utils_before_install
+
 WEB_FORM_FIELDS = {
 	"Web Form": [
 		{
@@ -21,7 +24,7 @@ WEB_FORM_FIELDS = {
 			"fieldname": "accept_payment",
 			"fieldtype": "Check",
 			"label": "Accept Payment",
-			"insert_after": "payments",
+			"insert_after": "payments_tab",
 			"module": "Payment Core",
 		},
 		{
@@ -95,16 +98,78 @@ WEB_FORM_FIELDS = {
 
 
 def before_install():
-	from payment_core.utils import before_install as _guard
+	return utils_before_install()
 
-	return _guard()
+
+# Desk roles: Manager mirrors ERPNext's Accounts Manager, User mirrors Accounts User.
+PAYMENT_ROLES = ("Payment Manager", "Payment User")
+
+
+def ensure_default_roles():
+	"""Create the desk roles used by apps adopting the payment doctypes."""
+	for role_name in PAYMENT_ROLES:
+		if not frappe.db.exists("Role", role_name):
+			frappe.get_doc({"doctype": "Role", "role_name": role_name, "desk_access": 1}).insert(
+				ignore_permissions=True
+			)
 
 
 def after_install():
+	ensure_default_roles()
 	if not frappe.get_meta("Web Form").has_field("payments_tab"):
 		click.secho("* Installing Payment Web Form custom fields")
 		create_custom_fields(WEB_FORM_FIELDS)
 		frappe.clear_cache(doctype="Web Form")
+	print_install_summary()
+
+
+def print_install_summary():
+	"""Tell the installing admin, right in the terminal, what just landed.
+
+	On a site without ERPNext (or any own-flow app) the shared Payment Ledger
+	is installed; on a site with one, payment_core stays a gateway layer.
+	"""
+	if is_gateway_only():
+		click.secho("* Payment Core installed in gateway-only mode", fg="yellow")
+		click.secho(f"  {gateway_only_reason()}")
+		click.secho("  The shared Payment Ledger is NOT installed: the flow above keeps")
+		click.secho("  owning documents and settlement. Payment Core provides the gateway")
+		click.secho("  registry, hosted checkout, webhook verification and analytics only.")
+		return
+
+	click.secho("* No ERPNext found - installed the shared Payment Ledger", fg="green")
+	summary = [
+		(
+			"Payment Transaction",
+			"one row per payment attempt: reference document, amount, gateway,",
+		),
+		("", "status (Draft -> Requested -> Paid) and the hosted-checkout link"),
+		(
+			"Payment Receipt",
+			"the money voucher written on capture/refund; drives Paid/Partially Paid",
+		),
+		(
+			"Payment Field Mapping",
+			"connects any doctype's fields to payment purposes (amount, buyer",
+		),
+		("", "email, phone, ...) - the doctype then gets the payment desk action"),
+		(
+			"Payment Gateway",
+			"registry routing gateway rows to their settings (e.g. Stripe Settings)",
+		),
+		(
+			"Payment Webhook Log",
+			"audit of signed gateway webhooks (settlement backstop)",
+		),
+		(
+			"Payment Core Settings",
+			"site options: auto payment receipts, buyer email flow",
+		),
+	]
+	for name, line in summary:
+		click.secho(f"  - {name + ':':<24}{line}")
+	click.secho("  Plus the Payment Core workspace and payment analytics.")
+	click.secho("  Gateway apps (stripe_payment, ...) plug in as the checkout providers.")
 
 
 def before_uninstall():
