@@ -5,17 +5,23 @@
 # methods must keep their exact controller-call contracts while resolving
 # through payment_core; these tests pin both.
 
+from unittest import skipUnless
 from unittest.mock import MagicMock, patch
 
-import erpnext.accounts.doctype.payment_request.payment_request as erpnext_payment_request
 import frappe
 from frappe.model.base_document import get_controller
 from frappe.tests.utils import FrappeTestCase
 
 import payment_core.utils as payment_core_utils
-from payment_core.overrides.payment_request import PaymentRequest as OverridePaymentRequest
+
+ERPNext_INSTALLED = "erpnext" in frappe.get_installed_apps()
+if ERPNext_INSTALLED:
+	import erpnext.accounts.doctype.payment_request.payment_request as erpnext_payment_request
+
+	from payment_core.overrides.payment_request import PaymentRequest as OverridePaymentRequest
 
 
+@skipUnless(ERPNext_INSTALLED, "ERPNext Payment Request integration is optional")
 class TestPaymentRequestOverride(FrappeTestCase):
 	def test_extension_is_registered_and_used_by_frappe(self):
 		extensions = frappe.get_hooks("extend_doctype_class") or {}
