@@ -9,4 +9,4 @@ def get_context(context):
 
 	if token:
 		frappe.db.set_value("Integration Request", token, "status", "Cancelled")
-		frappe.db.commit()
+		frappe.db.commit()  # nosemgrep: rules.frappe-manual-commit

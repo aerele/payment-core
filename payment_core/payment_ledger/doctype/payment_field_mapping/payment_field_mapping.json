@@ -1,0 +1,78 @@
+{
+	"actions": [],
+	"autoname": "format:PFM-{YYYY}-{#####}",
+	"creation": "2026-09-16 00:00:00.000000",
+	"doctype": "DocType",
+	"engine": "InnoDB",
+	"field_order": [
+		"mapping_section",
+		"reference_doctype",
+		"disabled",
+		"fields_section",
+		"mapping"
+	],
+	"fields": [
+		{
+			"fieldname": "mapping_section",
+			"fieldtype": "Section Break",
+			"label": "Reference Mapping"
+		},
+		{
+			"description": "The payable doctype whose fields are mapped below. One enabled mapping per doctype.",
+			"fieldname": "reference_doctype",
+			"fieldtype": "Link",
+			"in_list_view": 1,
+			"in_standard_filter": 1,
+			"label": "Reference DocType",
+			"options": "DocType",
+			"reqd": 1
+		},
+		{
+			"default": "0",
+			"fieldname": "disabled",
+			"fieldtype": "Check",
+			"label": "Disabled"
+		},
+		{
+			"description": "One row per payment purpose; the amount purpose is required. Field names are read server-side at checkout so the browser cannot tamper with them.",
+			"fieldname": "fields_section",
+			"fieldtype": "Section Break",
+			"label": "Field Mappings"
+		},
+		{
+			"fieldname": "mapping",
+			"fieldtype": "Table",
+			"label": "Field Mappings",
+			"options": "Payment Field Mapping Item",
+			"reqd": 1
+		}
+	],
+	"index_web_pages_for_search": 0,
+	"links": [],
+	"modified": "2026-09-18 01:00:00.000000",
+	"modified_by": "Administrator",
+	"module": "Payment Ledger",
+	"name": "Payment Field Mapping",
+	"owner": "Administrator",
+	"permissions": [
+		{
+			"create": 1,
+			"delete": 1,
+			"read": 1,
+			"role": "System Manager",
+			"write": 1
+		},
+		{
+			"create": 1,
+			"read": 1,
+			"role": "Payment Manager",
+			"write": 1
+		},
+		{
+			"read": 1,
+			"role": "Payment User"
+		}
+	],
+	"sort_field": "modified",
+	"sort_order": "DESC"
+}

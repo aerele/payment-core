@@ -25,6 +25,16 @@ override_whitelisted_methods = {
 	"frappe.website.doctype.web_form.web_form.accept": "payment_core.overrides.payment_webform.accept"
 }
 
+# Hook on document methods and events
+doc_events = {
+	"Custom Field": {
+		"on_trash": "payment_core.field_mapping.on_custom_field_trash",
+	},
+	"Payment Transaction": {
+		"on_update": "payment_core.notifications.on_transaction_update",
+	},
+}
+
 # Apps
 # ------------------
 
@@ -276,3 +286,11 @@ require_type_annotated_api_methods = True
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
+
+# Scheduler Events
+# ---------------
+scheduler_events = {
+	"daily": [
+		"payment_core.tasks.reconcile_stale_transactions",
+	],
+}

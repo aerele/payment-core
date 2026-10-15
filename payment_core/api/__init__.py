@@ -6,8 +6,10 @@
 from payment_core.api.controllers import get_gateway_controller_name
 from payment_core.api.subscriptions import create_gateway_subscription
 from payment_core.utils import (
+	create_payment_transaction,
 	erpnext_app_import_guard,
 	get_payment_gateway_controller,
 	is_v2_gateway,
+	update_payment_transaction,
 	validate_integration_request,
 )

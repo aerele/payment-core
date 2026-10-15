@@ -25,7 +25,7 @@ WEB_FORM_FIELDS = {
 			"fieldname": "accept_payment",
 			"fieldtype": "Check",
 			"label": "Accept Payment",
-			"insert_after": "payments",
+			"insert_after": "payments_tab",
 			"module": "Payment Core",
 		},
 		{
