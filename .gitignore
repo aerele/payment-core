@@ -10,3 +10,4 @@ build/
 .ruff_cache/
 .idea/
 *.log
+payment_core/public/node_modules
