@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "creation": "2026-09-23 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "receipts_section",
+  "auto_create_receipt",
+  "email_flow_section",
+  "enable_email_flow"
+ ],
+ "fields": [
+  {
+   "fieldname": "receipts_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Receipts"
+  },
+  {
+   "default": "0",
+   "description": "When a payment completes, automatically write a Capture Payment Receipt for the full amount. Apps that explicitly request a receipt for their own flow (e.g. an order checkout) are not affected by this switch-off.",
+   "fieldname": "auto_create_receipt",
+   "fieldtype": "Check",
+   "label": "Auto Create Payment Receipts"
+  },
+  {
+   "fieldname": "email_flow_section",
+   "fieldtype": "Section Break",
+   "label": "Email Flow"
+  },
+  {
+   "default": "0",
+   "description": "When a Payment Transaction is submitted, email the buyer the payment link with the reference document's print attached (like ERPNext's Payment Request). When unchecked, the checkout link is used directly from the transaction ('open checkout').",
+   "fieldname": "enable_email_flow",
+   "fieldtype": "Check",
+   "label": "Email Payment Link on Submit"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-23 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Payment Core",
+ "name": "Payment Core Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Payment Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "icon": "settings"
+}

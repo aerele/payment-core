@@ -3,7 +3,8 @@
 #
 # Regression suite for the Payment Request resolver redirect. ERPNext's own
 # methods must keep their exact controller-call contracts while resolving
-# through payment_core; these tests pin both.
+# through payment_core; these tests pin both. payment_core runs with and
+# without ERPNext — the whole module skips on sites without it.
 
 from unittest import skipUnless
 from unittest.mock import MagicMock, patch
@@ -12,12 +13,12 @@ import frappe
 from frappe.model.base_document import get_controller
 from frappe.tests.utils import FrappeTestCase
 
-import payment_core.utils as payment_core_utils
-
 ERPNext_INSTALLED = "erpnext" in frappe.get_installed_apps()
+
 if ERPNext_INSTALLED:
 	import erpnext.accounts.doctype.payment_request.payment_request as erpnext_payment_request
 
+	import payment_core.utils as payment_core_utils
 	from payment_core.overrides.payment_request import PaymentRequest as OverridePaymentRequest
 
 
@@ -167,6 +168,74 @@ class TestPaymentRequestOverride(FrappeTestCase):
 			return_value=controller,
 		):
 			self.assertEqual(doc.payment_gateway_validation(), "custom_redirect")
+
+	@staticmethod
+	def _ensure_erpnext_fixtures() -> tuple:
+		"""Bootstrap the ERPNext masters this test needs on wizard-less sites.
+
+		CI installs ERPNext without completing the setup wizard. erpnext's own
+		BootStrapTestData installs its presets (tree roots, UOMs, warehouse
+		types — inserted with explicit names, which Prompt autoname requires)
+		and master data (company, customer, item, fiscal years) exactly the way
+		its own test suite expects to find them. Only the payments side (a
+		default Payment Gateway Account for make_payment_request) is ours.
+		"""
+		if not frappe.db.get_value("Company", {}):
+			from erpnext.tests.utils import BootStrapTestData
+
+			BootStrapTestData()
+
+		company = frappe.db.get_value("Company", {}, "name")
+		company_currency = frappe.db.get_value("Company", company, "default_currency") or "INR"
+		abbr = frappe.db.get_value("Company", company, "abbr")
+
+		from payment_core.utils import create_payment_gateway
+
+		if not frappe.db.exists("Payment Gateway", "PayTest"):
+			create_payment_gateway("PayTest")
+		if not frappe.db.exists("Payment Gateway Account", {"is_default": 1}):
+			frappe.get_doc(
+				{
+					"doctype": "Payment Gateway Account",
+					"payment_gateway": "PayTest",
+					"company": company,
+					"payment_account": f"Cash - {abbr}",
+					"currency": company_currency,
+					"is_default": 1,
+				}
+			).insert(ignore_permissions=True)
+
+		customer = frappe.db.get_value("Customer", {}, "name")
+		item = frappe.db.get_value("Item", {"is_sales_item": 1}, "name")
+		return company, customer, item, company_currency
+
+	def test_authorize_reference_settles_pr_and_returns_no_redirect(self):
+		"""The PR branch must not leak the Payment Entry document to callers.
+
+		Gateways treat authorize_reference's return as a redirect route; the
+		Payment Entry document settle_payment_request yields coerces into a
+		bogus "Payment Entry (NAME)" URL that 404s after checkout.
+		"""
+		company, customer, item, company_currency = self._ensure_erpnext_fixtures()
+		si = frappe.new_doc("Sales Invoice")
+		si.customer = customer
+		si.company = company
+		si.currency = company_currency
+		si.append("items", {"item_code": item, "qty": 1, "rate": 100})
+		si.insert()
+		si.submit()
+
+		pr = erpnext_payment_request.make_payment_request(
+			dt="Sales Invoice", dn=si.name, recipient_id=None, payment_type="Outward", mute=1
+		)
+		if isinstance(pr, dict):
+			pr = frappe.get_doc("Payment Request", pr.get("name"))
+
+		with patch.object(payment_core_utils, "settle_payment_request") as settle:
+			result = payment_core_utils.authorize_reference("Payment Request", pr.name, "Paid")
+
+		self.assertIsNone(result)
+		settle.assert_called_once()
 
 	def test_create_subscription_dispatches_via_payment_core_registry(self):
 		doc = self._new_payment_request()

@@ -1,0 +1,138 @@
+{
+	"actions": [],
+	"autoname": "format:PWL-{YYYY}-{#####}",
+	"creation": "2026-09-17 00:00:00.000000",
+	"doctype": "DocType",
+	"engine": "InnoDB",
+	"field_order": [
+		"event_section",
+		"source",
+		"event_id",
+		"event_type",
+		"provider_reference",
+		"column_break_status",
+		"status",
+		"signature_valid",
+		"reference_section",
+		"reference_doctype",
+		"reference_docname",
+		"payload_section",
+		"payload",
+		"error"
+	],
+	"fields": [
+		{
+			"fieldname": "event_section",
+			"fieldtype": "Section Break",
+			"label": "Event"
+		},
+		{
+			"description": "Gateway/settings or app that received the webhook.",
+			"fieldname": "source",
+			"fieldtype": "Data",
+			"in_list_view": 1,
+			"in_standard_filter": 1,
+			"label": "Source"
+		},
+		{
+			"description": "Provider's unique event id; the dedupe guard.",
+			"fieldname": "event_id",
+			"fieldtype": "Data",
+			"in_list_view": 1,
+			"in_standard_filter": 1,
+			"label": "Event ID",
+			"unique": 1
+		},
+		{
+			"fieldname": "event_type",
+			"fieldtype": "Data",
+			"in_list_view": 1,
+			"in_standard_filter": 1,
+			"label": "Event Type"
+		},
+		{
+			"fieldname": "provider_reference",
+			"fieldtype": "Data",
+			"label": "Provider Reference"
+		},
+		{
+			"fieldname": "column_break_status",
+			"fieldtype": "Column Break"
+		},
+		{
+			"default": "Received",
+			"fieldname": "status",
+			"fieldtype": "Select",
+			"in_list_view": 1,
+			"in_standard_filter": 1,
+			"label": "Status",
+			"options": "Received\nProcessed\nFailed\nIgnored"
+		},
+		{
+			"default": "1",
+			"fieldname": "signature_valid",
+			"fieldtype": "Check",
+			"label": "Signature Valid"
+		},
+		{
+			"collapsible": 1,
+			"fieldname": "reference_section",
+			"fieldtype": "Section Break",
+			"label": "Reference"
+		},
+		{
+			"fieldname": "reference_doctype",
+			"fieldtype": "Link",
+			"label": "Reference DocType",
+			"options": "DocType"
+		},
+		{
+			"fieldname": "reference_docname",
+			"fieldtype": "Dynamic Link",
+			"label": "Reference Name",
+			"options": "reference_doctype"
+		},
+		{
+			"collapsible": 1,
+			"fieldname": "payload_section",
+			"fieldtype": "Section Break",
+			"label": "Payload"
+		},
+		{
+			"fieldname": "payload",
+			"fieldtype": "Code",
+			"label": "Payload",
+			"options": "JSON"
+		},
+		{
+			"fieldname": "error",
+			"fieldtype": "Small Text",
+			"label": "Error"
+		}
+	],
+	"index_web_pages_for_search": 0,
+	"links": [],
+	"modified": "2026-09-17 09:00:00.000000",
+	"modified_by": "Administrator",
+	"module": "Payment Core",
+	"name": "Payment Webhook Log",
+	"owner": "Administrator",
+	"permissions": [
+		{
+			"create": 1,
+			"delete": 1,
+			"read": 1,
+			"role": "System Manager",
+			"write": 1
+		},
+		{
+			"create": 1,
+			"read": 1,
+			"role": "Payment Manager",
+			"write": 1
+		}
+	],
+	"sort_field": "modified",
+	"sort_order": "DESC",
+	"title_field": "event_id"
+}

@@ -1,0 +1,336 @@
+{
+ "actions": [],
+ "autoname": "naming_series",
+ "creation": "2026-09-11 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "transaction_date",
+  "subject",
+  "reference_section",
+  "reference_doctype",
+  "reference_docname",
+  "gateway",
+  "column_break_reference",
+  "status",
+  "amount",
+  "outstanding_amount",
+  "currency",
+  "auto_receipt",
+  "valid_until",
+  "customer_section",
+  "customer_doctype",
+  "customer",
+  "customer_email",
+  "provider_customer_id",
+  "payer_name",
+  "phone_number",
+  "column_break_customer",
+  "initiated_by",
+  "payment_method",
+  "payment_channel",
+  "provider_section",
+  "provider_transaction_id",
+  "order_id",
+  "paid_at",
+  "column_break_provider",
+  "idempotency_key",
+  "checkout_url",
+  "diagnostics_section",
+  "error_message",
+  "metadata",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "PAY-TRN-.YYYY.-",
+   "reqd": 1,
+   "default": "PAY-TRN-.YYYY.-"
+  },
+  {
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "label": "Transaction Date",
+   "default": "Today"
+  },
+  {
+   "description": "Used as the checkout description, like a Payment Request subject.",
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "label": "Subject"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Payment Transaction",
+   "read_only": 1,
+   "print_hide": 1
+  },
+  {
+   "fieldname": "reference_section",
+   "fieldtype": "Section Break",
+   "label": "Reference"
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference DocType",
+   "options": "DocType",
+   "reqd": 1,
+   "search_index": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "reference_docname",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Name",
+   "options": "reference_doctype",
+   "reqd": 1,
+   "search_index": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_reference",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nRequested\nInitiated\nPartially Paid\nPaid\nFailed\nCancelled\nRefunded",
+   "default": "Draft",
+   "reqd": 1,
+   "read_only": 1,
+   "search_index": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Data",
+   "label": "Currency",
+   "default": "INR",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "description": null,
+   "fieldname": "auto_receipt",
+   "fieldtype": "Check",
+   "label": "Auto Create Receipt",
+   "read_only": 1,
+   "hidden": 1,
+   "print_hide": 1
+  },
+  {
+   "fieldname": "gateway",
+   "fieldtype": "Data",
+   "label": "Gateway",
+   "reqd": 1,
+   "search_index": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "customer_section",
+   "fieldtype": "Section Break",
+   "label": "Customer"
+  },
+  {
+   "fieldname": "customer_doctype",
+   "fieldtype": "Link",
+   "label": "Customer DocType",
+   "options": "DocType",
+   "hidden": 1,
+   "description": "Declared by the consuming app via the payment_customer_doctype hook."
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Dynamic Link",
+   "label": "Customer",
+   "options": "customer_doctype",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "customer_email",
+   "fieldtype": "Data",
+   "label": "Customer Email"
+  },
+  {
+   "description": "The customer id at the payment provider, e.g. the Stripe customer.",
+   "fieldname": "provider_customer_id",
+   "fieldtype": "Data",
+   "label": "Provider Customer ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_method",
+   "fieldtype": "Data",
+   "label": "Payment Method"
+  },
+  {
+   "fieldname": "column_break_customer",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "initiated_by",
+   "fieldtype": "Link",
+   "label": "Initiated By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "provider_section",
+   "fieldtype": "Section Break",
+   "label": "Provider Details"
+  },
+  {
+   "fieldname": "provider_transaction_id",
+   "fieldtype": "Data",
+   "label": "Provider Transaction ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "paid_at",
+   "fieldtype": "Datetime",
+   "label": "Paid At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_provider",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "idempotency_key",
+   "fieldtype": "Data",
+   "label": "Idempotency Key",
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "checkout_url",
+   "fieldtype": "Small Text",
+   "label": "Payment URL",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "diagnostics_section",
+   "fieldtype": "Section Break",
+   "label": "Diagnostics"
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Small Text",
+   "label": "Error Message",
+   "read_only": 1
+  },
+  {
+   "fieldname": "metadata",
+   "fieldtype": "Code",
+   "label": "Metadata",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payer_name",
+   "fieldtype": "Data",
+   "label": "Payer Name",
+   "read_only": 1,
+   "description": "Buyer display name, resolved from the reference via the field mapping."
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "label": "Phone Number",
+   "description": "Buyer phone, resolved from the reference via the field mapping."
+  },
+  {
+   "fieldname": "payment_channel",
+   "fieldtype": "Data",
+   "label": "Payment Channel",
+   "description": "e.g. Email / Phone / Web, resolved from the reference via the field mapping."
+  },
+  {
+   "fieldname": "outstanding_amount",
+   "fieldtype": "Currency",
+   "label": "Outstanding Amount",
+   "read_only": 1,
+   "description": "Amount minus captured receipts for this transaction."
+  },
+  {
+   "fieldname": "valid_until",
+   "fieldtype": "Date",
+   "label": "Valid Until",
+   "read_only": 1,
+   "description": "Checkout validity from the reference's due date, when mapped."
+  },
+  {
+   "fieldname": "order_id",
+   "fieldtype": "Data",
+   "label": "Order ID",
+   "read_only": 1,
+   "description": "Reference order identifier used for statement reconciliation."
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [
+  {
+   "group": "Payment",
+   "link_doctype": "Payment Receipt",
+   "link_fieldname": "payment_transaction"
+  }
+ ],
+ "modified": "2026-09-18 03:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Payment Ledger",
+ "name": "Payment Transaction",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Payment Manager",
+   "write": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Payment User",
+   "write": 1,
+   "submit": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "reference_docname",
+ "is_submittable": 1
+}
