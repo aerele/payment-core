@@ -1,0 +1,10 @@
+{
+  "name": "payment_core",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "@vue-flow/background": "1.2.0",
+    "@vue-flow/core": "1.26.0",
+    "vue": "3.3.9"
+  }
+}

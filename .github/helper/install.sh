@@ -19,7 +19,7 @@ git clone "https://github.com/${frappeuser}/frappe" --branch "${frappebranch}" -
 bench init --skip-assets --frappe-path ~/frappe --python "$(which python)" frappe-bench
 
 mkdir ~/frappe-bench/sites/test_site
-cp -r "${GITHUB_WORKSPACE}/.github/helper/site_config.json" ~/frappe-bench/sites/test_site/
+cp "${GITHUB_WORKSPACE}/.github/helper/${SITE_CONFIG:-site_config.json}" ~/frappe-bench/sites/test_site/site_config.json
 
 mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4'"
 mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'"
@@ -45,7 +45,11 @@ sed -i 's/schedule:/# schedule:/g' Procfile
 sed -i 's/socketio:/# socketio:/g' Procfile
 sed -i 's/redis_socketio:/# redis_socketio:/g' Procfile
 
-bench get-app "https://github.com/${frappeuser}/erpnext" --branch "$erpnextbranch" --resolve-deps
+# The ledger CI job runs on plain Frappe: ERPNext is skipped so the site
+# stays in full-ledger mode and the ledger test classes actually run.
+if [ "${SKIP_ERPNEXT:-0}" != "1" ]; then
+    bench get-app "https://github.com/${frappeuser}/erpnext" --branch "$erpnextbranch" --resolve-deps
+fi
 bench get-app payment_core "${GITHUB_WORKSPACE}"
 bench setup requirements --dev
 

@@ -1,0 +1,42 @@
+{
+	"actions": [],
+	"creation": "2026-09-18 00:00:00.000000",
+	"doctype": "DocType",
+	"editable_grid": 1,
+	"engine": "InnoDB",
+	"field_order": [
+		"purpose",
+		"reference_field"
+	],
+	"fields": [
+		{
+			"description": "What payment_core reads through this mapping.",
+			"fieldname": "purpose",
+			"fieldtype": "Select",
+			"in_list_view": 1,
+			"label": "Payment Purpose",
+			"options": "amount\ncurrency\npayment_method\ncustomer_email\ncustomer\npayer_name\norder_id\ndue_date\npayment_channel\nphone_number",
+			"reqd": 1
+		},
+		{
+			"description": "Field on the reference doctype that serves this purpose.",
+			"fieldname": "reference_field",
+			"fieldtype": "Autocomplete",
+			"in_list_view": 1,
+			"label": "Reference Field",
+			"reqd": 1
+		}
+	],
+	"index_web_pages_for_search": 0,
+	"istable": 1,
+	"links": [],
+	"modified": "2026-09-18 00:00:00.000000",
+	"modified_by": "Administrator",
+	"module": "Payment Ledger",
+	"name": "Payment Field Mapping Item",
+	"owner": "Administrator",
+	"permissions": [],
+	"sort_field": "modified",
+	"sort_order": "DESC",
+	"states": []
+}

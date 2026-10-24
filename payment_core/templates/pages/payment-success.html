@@ -8,11 +8,11 @@
 		<span class='indicator green'>
 			{{ _("Success") }}</span>
 	</div>
-	<p>{{ payment_message or _("Your payment was successfully accepted") }}</p>
+	<p>{{ (payment_message or _("Your payment was successfully accepted")) | e }}</p>
 	{% if not payment_message %}
 		<div>
 			<a
-			   href='{{ frappe.form_dict.redirect_to or "/" }}'
+			   href="{{ (redirect_to or '/') | e }}"
 			   class='btn btn-primary btn-sm'>
 				{{ _("Continue") }}
 			</a>
@@ -24,11 +24,42 @@
 </style>
 <script>
 	frappe.ready(function() {
-		if('{{ frappe.form_dict.redirect_to or "" }}'){
-			setTimeout(function(){
-				window.location.href = '{{ frappe.form_dict.redirect_to }}';
-			}, 4000);
+		// Rendered via tojson: query params are attacker input and must never
+		// land in raw JS string literals (frappe templates do not autoescape).
+		var doctype = {{ doctype | tojson }};
+		var docname = {{ docname | tojson }};
+		var redirect_to = {{ redirect_to | tojson }};
+		var open_statuses = ["Initiated", "Requested"];
+		var tries = 0;
+		var max_tries = 12; // ~30s of re-checks; the webhook remains the backstop
+
+		function leave() {
+			if (redirect_to) {
+				window.location.href = redirect_to;
+			}
 		}
+
+		function poll() {
+			if (!doctype || !docname) {
+				return leave();
+			}
+			frappe.call({
+				method: "payment_core.utils.reconcile_payment_status",
+				args: { doctype: doctype, docname: docname },
+				quiet: true,
+			}).then(function(r) {
+				var status = r.message || "";
+				tries += 1;
+				if (!open_statuses.includes(status) || tries >= max_tries) {
+					return leave();
+				}
+				setTimeout(poll, 2500);
+			}).catch(function() {
+				leave();
+			});
+		}
+
+		poll();
 	})
 </script>
 {% endblock %}
