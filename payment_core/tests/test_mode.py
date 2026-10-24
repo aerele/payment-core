@@ -3,6 +3,7 @@
 #
 # Gateway-only mode: detection, suppression and the purge data guard.
 
+from unittest import skipUnless
 from unittest.mock import patch
 
 import frappe
@@ -171,3 +172,12 @@ class TestPurgeLedger(FrappeTestCase):
 		):
 			purge_ledger()
 		delete_doc.assert_not_called()
+
+
+@skipUnless("erpnext" in frappe.get_installed_apps(), "erpnext CI leg only")
+class TestGatewayOnlyCISite(FrappeTestCase):
+	"""The ERPNext CI leg must actually land in gateway-only mode: the
+	ledger table is absent (erpnext installs before payment_core)."""
+
+	def test_ledger_table_absent(self):
+		self.assertFalse(frappe.db.table_exists("Payment Transaction"))

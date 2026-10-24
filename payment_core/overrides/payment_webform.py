@@ -53,7 +53,7 @@ class PaymentWebForm(WebForm):
 			return controller.get_payment_url(**payment_details)
 
 
-@frappe.whitelist(allow_guest=True)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
+@frappe.whitelist(allow_guest=True)  # nosemgrep: rules.security.guest-whitelisted-method
 @rate_limit(key="web_form", limit=5, seconds=60, methods=["POST"])
 def accept(web_form: str, data: str, docname: str | None = None, for_payment: bool = False):
 	"""Save the web form"""

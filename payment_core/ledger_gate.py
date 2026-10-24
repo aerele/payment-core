@@ -11,12 +11,9 @@ two halves:
   already-installed apps) drops the Payment Ledger module from the module map
   frappe is about to walk, so the ledger doctypes are never created or
   updated on such sites.
-- ``purge_ledger`` (after_migrate / after_sync — after schema, fixtures and
-  workspace sync) removes any leftovers: doctypes with their tables and the
-  ledger workspace links. Analytics stay everywhere — they adapt to the
-  site's own payment flow (see analytics_adapters) — so the dashboard block
-  and the Payment Analytics shortcut are intentionally kept on gateway-only
-  sites.
+- ``purge_ledger`` (after_migrate / after_sync — after schema and fixture
+  sync) removes any leftovers: doctypes with their tables and ledger-only
+  Page/Report artifacts.
 
 Both halves are idempotent and no-ops on full-ledger sites.
 """
