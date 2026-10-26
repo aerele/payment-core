@@ -1,0 +1,38 @@
+.gateway-picker-help,
+.gateway-empty {
+	color: var(--text-muted);
+	font-size: var(--text-sm);
+}
+
+.gateway-settings-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: var(--margin-md);
+	margin-top: var(--margin-md);
+}
+
+.gateway-card {
+	padding: var(--padding-md);
+	border: 1px solid var(--border-color);
+	border-radius: var(--border-radius);
+}
+
+.gateway-name {
+	color: var(--text-color);
+	font-size: var(--text-md);
+	font-weight: var(--weight-semibold);
+}
+
+.gateway-health,
+.gateway-configure {
+	margin-top: var(--margin-sm);
+}
+
+.gateway-health-label {
+	font-size: var(--text-xs);
+}
+
+.gateway-warning {
+	color: var(--text-on-orange);
+	font-size: var(--text-sm);
+}

@@ -45,7 +45,7 @@ add_to_apps_screen = [
 		"name": "payment_core",
 		"logo": "/assets/payment_core/images/payment_core-logo.png",
 		"title": "Payment Core",
-		"route": "/app",
+		"route": "/app/payment-core",
 	}
 ]
 
@@ -54,7 +54,7 @@ add_to_apps_screen = [
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/payment_core/css/payment_core.css"
-# app_include_js = "/assets/payment_core/js/payment_core.js"
+app_include_js = "/assets/payment_core/js/payment_reference_button.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/payment_core/css/payment_core.css"
@@ -72,7 +72,7 @@ add_to_apps_screen = [
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+doctype_list_js = {"Payment Field Mapping": "public/js/payment_field_mapping_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -294,3 +294,7 @@ scheduler_events = {
 		"payment_core.tasks.reconcile_stale_transactions",
 	],
 }
+
+# -----
+# Boot: advertise mapped doctypes for the desk payment action
+extend_bootinfo = ["payment_core.boot.extend_bootinfo"]

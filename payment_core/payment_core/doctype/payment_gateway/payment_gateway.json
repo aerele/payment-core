@@ -46,6 +46,10 @@
    "read": 1,
    "role": "System Manager",
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Payment Manager"
   }
  ],
  "quick_entry": 1,
