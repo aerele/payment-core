@@ -73,7 +73,8 @@
    "fieldname": "currency",
    "fieldtype": "Data",
    "label": "Currency",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "method",
@@ -101,7 +102,8 @@
    "fieldname": "posted_on",
    "fieldtype": "Datetime",
    "label": "Posted On",
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "search_index": 1
   },
   {
    "fieldname": "remarks",
