@@ -3,11 +3,14 @@
 ## Purpose
 
 This repository is the provider-neutral payment foundation for Frappe and ERPNext. Use these
-instructions for either of these tasks:
+instructions for any of these tasks:
 
-1. Maintain shared behavior in `payment_core`.
-2. Research, design, scaffold, implement, and verify a separate payment-provider app using the
-   collision-safe `<app_name>` selected by this workflow.
+1. Configure `payment_core` for a consuming app: integrate a custom Frappe app with an installed
+   gateway app, using its own payment flow or the shared Payment Ledger. Start with the
+   Configuration Intake Workflow below.
+2. Maintain shared behavior in `payment_core`.
+3. Research, design, scaffold, implement, and verify a separate payment-provider app using the
+   collision-safe `<app_name>` selected by the New Provider Workflow.
 
 Provider-specific credentials, SDK clients, checkout pages, webhooks, reconciliation, and branding
 belong in a separate provider app. Do not add them to `payment_core` unless they are genuinely
@@ -19,8 +22,10 @@ using Claude Code, explicitly tell it to read and follow `AGENTS.md` before star
 ## Supported Platforms
 
 - Target Frappe and ERPNext from `version-16` through `develop`.
-- `payment_core` is required by every provider app; ERPNext is required transitively by
-  `payment_core`.
+- `payment_core` is the gateway layer for ERPNext's Payment Request flow or for an app that
+  declares `uses_own_payment_flow = True`. The shared Payment Ledger is available on sites without
+  ERPNext when no installed app declares its own payment flow (unless `force_payment_ledger` is
+  set).
 - Do not copy the current repository's Python, Node, MariaDB, or package versions blindly. Before
   scaffolding, inspect the supported versions on both Frappe/ERPNext `version-16` and `develop`, then
   choose the compatible intersection and test both targets.
@@ -88,6 +93,23 @@ guidance and the current standalone apps.
 - Do not expose or request real secrets in chat, fixtures, source, logs, screenshots, or commits.
   Use placeholders and site configuration for local test credentials.
 
+## Payment Core Desk Surface and Documentation
+
+Payment Core provides a public **Payment Core** workspace with shortcuts and links to payment
+records, field mapping, settings, and analytics. The standard desk pages are:
+
+- `/app/payment-analytics`: analytics for users with Payment Manager, Payment User, or System
+  Manager role. Its data source adapts to shared-ledger, gateway-only, and ERPNext flows; its
+  currency and period filters scope the displayed metrics.
+- `/app/gateway-settings`: gateway settings hub for System Managers. It discovers gateway settings
+  from the registry and installed-app hooks, and reports health/setup warnings supplied by gateway
+  controllers.
+
+When changing these pages, workspace links, access roles, analytics metrics, or gateway discovery,
+update the README's **Desk workspace and payment operations** section to match the shipped behavior.
+Verify route names and roles against the Page JSON and implementation; do not document provider
+credentials or provider-specific setup as Payment Core functionality.
+
 ## Developer Approval Boundaries
 
 This file is a reusable engineering baseline, not standing approval for every provider, capability,
@@ -117,6 +139,311 @@ Approval for one boundary does not imply approval for another. In particular, ap
 tunnel does not authorize provider-dashboard webhook registration, and approval for sandbox testing
 does not authorize a live transaction. These boundaries apply whether an action is performed through
 a CLI, API, browser, SDK, automation, or dashboard. Never request secrets in the approval question.
+
+## Configuration Intake Workflow
+
+Use this workflow when integrating a custom app with Payment Core or configuring an installed
+gateway. It detects the site first, asks one decision at a time, and routes into the complete flow
+playbook below. If the developer wants a new gateway implementation, continue into the existing
+New Provider Workflow; do not repeat its research or scope gates here.
+
+### Step 0: Pre-flight Detection (Do Not Ask)
+
+Inspect the current Bench and selected site read-only before asking a configuration question. Never
+infer the target site from the current directory, default site, or `currentsite.txt`; use the Site
+Selection Gate when a site-backed change is needed. In bench console for the explicitly chosen site,
+paste this snippet to collect the relevant state:
+
+```python
+import frappe
+
+from payment_core.mode import gateway_only_reason, is_gateway_only, ledger_installed
+from payment_core.workspace import get_gateway_settings_options
+
+installed_apps = frappe.get_installed_apps()
+gateway_settings_options = get_gateway_settings_options()
+gateway_settings_doctypes = [option["label"] for option in gateway_settings_options]
+gateway_modules = frappe.get_hooks("payment_gateway_module") or {}
+payment_customer_doctypes = frappe.get_hooks("payment_customer_doctype") or []
+gateways = frappe.get_all(
+	"Payment Gateway",
+	fields=["name", "gateway", "gateway_settings", "gateway_controller"],
+	order_by="gateway asc",
+)
+mapping_doctypes = []
+if frappe.db.table_exists("Payment Field Mapping"):
+	mapping_doctypes = frappe.get_all(
+		"Payment Field Mapping",
+		fields=["name", "reference_doctype", "disabled", "modified"],
+		order_by="reference_doctype asc, modified desc",
+	)
+settings_rows = {}
+for doctype in gateway_settings_doctypes:
+	if not frappe.db.exists("DocType", doctype):
+		continue
+	if frappe.db.get_value("DocType", doctype, "issingle"):
+		settings_rows[doctype] = {"single": True, "has_values": bool(frappe.db.get_singles_dict(doctype))}
+	else:
+		settings_rows[doctype] = {"single": False, "names": frappe.get_all(doctype, pluck="name")}
+
+print(
+	{
+		"site": frappe.local.site,
+		"installed_apps": installed_apps,
+		"erpnext_installed": "erpnext" in installed_apps,
+		"payment_core_installed": "payment_core" in installed_apps,
+		"gateway_only": is_gateway_only(),
+		"gateway_only_reason": gateway_only_reason(),
+		"ledger_installed": ledger_installed(),
+		"gateway_settings_doctypes": gateway_settings_doctypes,
+		"payment_gateway_module_hooks": gateway_modules,
+		"payment_customer_doctype_hooks": payment_customer_doctypes,
+		"payment_gateways": gateways,
+		"gateway_settings_rows": settings_rows,
+		"add_gateway_options": gateway_settings_options,
+		"payment_field_mappings": mapping_doctypes,
+		"force_payment_ledger": frappe.conf.force_payment_ledger,
+	}
+)
+```
+
+Use `payment_core.workspace.get_gateway_settings_options()` as the authoritative Add Gateway picker
+result: it combines `payment_gateway_settings_doctypes` with distinct `gateway_settings` DocTypes in
+Payment Gateway rows, deduplicates them, and filters out missing DocTypes. Also inspect installed
+apps' `payment_gateway_module` hooks to detect provider-service registrations. Inspect settings
+records (including Single DocTypes), Payment Gateway rows, and Payment Field Mapping rows. A
+settings DocType present in hooks does not prove credentials are configured or a gateway row exists.
+
+Detect incomplete integrations and resume at the first missing step instead of asking the developer
+to repeat completed work. Examples include missing gateway rows/controllers, absent settings options,
+unimplemented reference settlement, disabled/incomplete mappings, an unresolved customer DocType, or
+an enabled mapping without a transaction/checkout/settlement path. Report the detected state briefly
+and ask only for the next consequential choice.
+
+### Gate 1: Intended Integration
+
+Ask:
+
+```text
+What are you trying to do with payment_core?
+1. Integrate my custom app using an installed gateway app
+2. Implement a new gateway app
+
+Reply with 1 or 2.
+```
+
+For option 1, name the gateways detected from settings and Payment Gateway rows and ask which one to
+use in a separate single-decision response. If none is installed, ask whether to install/configure an
+existing provider app first or start a new provider app through New Provider Workflow Phase 1. Do
+not silently scaffold or install a provider. For option 2, route directly to New Provider Workflow
+Phase 1; that workflow owns provider research, scope selection, and build authorization.
+
+### Gate 2: Site and Payment Mode
+
+Use detected ERPNext/app hooks to determine the available mode; ask only the applicable decision.
+If ERPNext is installed and the custom app has not already declared its own flow, ask:
+
+```text
+Can this custom app create an ERPNext Sales Order or Sales Invoice for each payable reference?
+1. Yes, create the ERPNext document, then use Payment Request and Payment Entry (Recommended)
+2. No, the custom DocType must remain the payable reference
+
+Reply with 1 or 2.
+```
+
+ERPNext Payment Request accepts only its hard-coded reference types: Sales Order, Purchase Order,
+Sales Invoice, Purchase Invoice, POS Invoice, and Fees. It cannot target an arbitrary custom
+DocType. Option 1 is the standard route: the custom app creates the applicable ERPNext document and
+raises the Payment Request against that document, so ERPNext owns accounting settlement. For option
+2, the custom app owns the buyer flow and payment records, remains gateway-only, declares
+`uses_own_payment_flow = True`, and uses Branch B. Never offer the shared-ledger branch while ERPNext
+is installed unless the developer explicitly requests `force_payment_ledger` and resolves the data
+guard.
+
+When ERPNext is absent and no installed app declares `uses_own_payment_flow`, ask:
+
+```text
+Who should own payment state for this custom app?
+1. The custom app's own payment doctypes (gateway-only)
+2. Payment Core shared Payment Ledger (Recommended)
+
+Reply with 1 or 2.
+```
+
+- With ERPNext installed, Payment Core is gateway-only by default. For accounting-grade settlement,
+  the custom app creates a supported ERPNext reference such as Sales Order or Sales Invoice and
+  raises the Payment Request against that document. If its custom DocType must remain the payable
+  reference, the app uses Branch B and declares `uses_own_payment_flow = True`.
+- Without ERPNext, a custom app with its own payment lifecycle declares
+  `uses_own_payment_flow = True` in `hooks.py`. If Payment Core should own transaction state and
+  receipts, use the shared Payment Ledger instead and do not declare that hook.
+- `force_payment_ledger` in `site_config.json` is an escape hatch that makes `is_gateway_only()`
+  false, including on ERPNext sites. Do not recommend it casually: verify which app owns accounting
+  and settlement first.
+- Mode changes can remove data. In gateway-only mode, `purge_ledger()` drops shared Payment Ledger
+  DocTypes/tables only after checking them; it hard-stops if any ledger table has rows. Before any
+  mode flip or migration that activates gateway-only mode, surface the impact and require an
+  explicit data plan: take a backup and export/retain records, or deliberately keep the ledger with
+  `force_payment_ledger`. Never claim a backup restores the ledger schema or automatically converts
+  ledger rows.
+
+The mode question is not a generic preference: installed ERPNext and app hooks constrain the active
+mode. If the chosen mode conflicts with existing payment records, stop and resolve the data plan
+before migrating.
+
+### Gateway Configuration Playbook (Required Before Either Integration Branch)
+
+Configure the selected provider app's Settings DocType, not a hand-created Payment Gateway row. For
+example, saving Stripe Settings registers its correctly named Stripe-<name> Payment Gateway row
+through the provider app lifecycle. This prevents duplicate or incorrectly named gateway rows.
+
+1. Confirm the gateway Settings DocType is present in the Add Gateway picker. Provider apps expose
+   it with `payment_gateway_settings_doctypes = ["<Provider> Settings"]` in `hooks.py`; the picker
+   also includes registered `gateway_settings` DocTypes from Payment Gateway rows.
+2. Guide the administrator to set the intended sandbox/live environment and credentials in the
+   provider Settings form; never ask for or echo credential values in chat. Use its
+   permission-checked **Test Credentials** action when provided and report only the result.
+3. Review the generated webhook endpoint and provider-specific public HTTPS requirements. Confirm
+   canonical `host_name`, host/port, and public reachability before any dashboard registration. A
+   public endpoint or tunnel and provider dashboard changes remain separate approval boundaries.
+4. Run a configuration smoke check first: settings save, gateway resolution through
+   `get_payment_gateway_controller()`, and expected callback/webhook routes are reachable. Mock
+   `get_payment_url()` for local contract checks. If a real call creates a remote object, treat it
+   as sandbox execution and obtain approval first. Configuration checks are not full E2E acceptance.
+
+### Branch B: Custom App Owns the Payment Flow (Gateway-Only)
+
+Canonical reference: LMS. This branch suits an app with its own order/enrollment/payment records and
+its own buyer-facing flow.
+
+1. **Declare ownership.** Add `uses_own_payment_flow = True` to the custom app's `hooks.py`. Apply
+   the Gate 2 data warning before migrations if the mode will change.
+2. **Expose analytics.** If the app should populate Payment Analytics, register
+   `payment_analytics_adapter = "app.module.build_analytics"` in its `hooks.py`. The callable returns
+   the same display payload shape as the shared-ledger analytics; use
+   `payment_core.analytics_adapters.get_adapter` and `adapted_payload` as the contract reference.
+3. **Settle the app's reference doctype.** Implement idempotent
+   `on_payment_authorized(self, payment_status)` on the payable DocType controller. Alternatively,
+   register `payment_reference_settlers = {"<DocType>": "path.to.callable"}`. Resolution priority
+   is controller callback, native Payment Request settlement, then the settler hook. Payment
+   Transaction states include Draft, Requested, Initiated, Partially Paid, Paid, Failed, Cancelled,
+   and Refunded; legacy Pending/Authorized map to Initiated and Completed maps to Paid. Normalize
+   provider-specific callback values deliberately and fulfil only on a settled status.
+4. **Initiate checkout from a server endpoint.** Resolve the gateway with
+   `get_payment_gateway_controller()`. Calculate amount, currency, and payable state server-side;
+   reject missing, cancelled, paid, expired, or otherwise non-payable references. Pass validated
+   reference details and a local `redirect_to` to `get_payment_url()`. Never accept amount,
+   reference, gateway, or redirect authority from the browser; make repeat attempts safe.
+5. **Handle return and failure.** Browser return is not proof of payment. Show success only after
+   server-verified/reconciled status, and handle failure and cancellation distinctly.
+6. **Refunds and pending recovery.** The shared-ledger refund API and receipt bookkeeping are
+   unavailable in gateway-only mode. Use provider app refund/reconciliation capabilities and persist
+   the app's outcome idempotently.
+7. **Web Forms.** Reuse the Web Form `accept` override only when its reference and status semantics
+   match the custom app.
+8. **Verify in layers.** Check mode and controller resolution, run mocked/non-settling checks, then
+   perform separately approved sandbox and browser acceptance. Obtain approval before editing the
+   consuming custom app or changing site state.
+
+### Branch C: Payment Core Shared-Ledger Playbook
+
+Use this branch only when the shared ledger is installed (`ledger_installed()` is true). Canonical
+custom-app example: `spare_parts`.
+
+#### Gate 3: Field Mapping
+
+Ask only on the shared-ledger branch:
+
+```text
+How should the reference fields be mapped?
+1. Have me inspect the DocType and configure the mapping (Recommended)
+2. I will configure it in the visual builder
+
+Reply with 1 or 2.
+```
+
+For automated mapping, use the field and customer-typing checks below. For manual mapping, route the
+developer to `/app/payment-field-mapping-builder` and explain: select the reference DocType; map the
+required amount and any available payment purposes; save, enable, and verify against a sample
+document. The builder does not configure consuming-app hooks. Keep one enabled mapping per DocType.
+
+- **Payment Transaction** is a gateway attempt linked to a reference. Submission resolves
+  `checkout_url` in `before_submit`; lifecycle states include Draft, Requested, Initiated, Partially
+  Paid, Paid, Failed, Cancelled, and Refunded.
+- **Payment Receipt** records Capture or Refund and enforces idempotent receipt lifecycle.
+- **Payment Field Mapping** and child **Payment Field Mapping Item** define how a custom reference
+  supplies payment purposes. **Payment Webhook Log** records provider event processing.
+- **Payment Core Settings** controls `auto_create_receipt` and `enable_email_flow`. Analytics can
+  read ledger or app-backed flows. **Payment Settlement Summary** is shared-ledger only.
+- A Payment Transaction's `customer` is a Dynamic Link and is invalid without `customer_doctype`.
+  Resolve the consuming app's customer model before enabling transaction creation.
+
+#### Field Mapping and Customer Typing
+
+For automated mapping, inspect `get_mappable_fields(reference_doctype)` and resolve the ten
+purposes: `amount`, `currency`, `payment_method`, `customer_email`, `customer`, `payer_name`,
+`order_id`, `due_date`, `payment_channel`, and `phone_number`. Use actual fields and accepted types
+from `PURPOSE_FIELD_TYPES` and fallback candidates from `REFERENCE_FIELD_DEFAULTS`.
+
+- If the app has no Customer/buyer DocType, leave `customer` unmapped and map available email/name/
+  phone fields. A transaction with no customer value does not need `customer_doctype`.
+- If there is one canonical buyer DocType, verify the mapped field is a Link to it. If
+  `payment_core.utils.get_customer_doctype()` does not return it, add
+  `payment_customer_doctype = "<Buyer DocType>"` to the consuming app's hooks, migrate, clear cache,
+  and verify the result. If multiple distinct customer DocType hooks exist, stop and resolve the
+  ambiguity. Payment Core currently returns the first hook value and does not enforce this check.
+- If references use different customer DocTypes, preserve each Link's `options` as
+  `customer_doctype`; implement and test per-mapping inference if a creation path loses that type.
+- Never map a Data field as `customer`, disable Dynamic Link validation, or ignore a missing type.
+
+Persist mappings through `save_mapping_builder_data()` or validated mapping rows. Verify
+`get_reference_field_map()` and `get_reference_amount()` on a sample document. If customer is mapped,
+create one unsubmitted draft transaction only on an explicitly selected local/dev site and verify
+both customer fields; remove only that known diagnostic draft afterward. Offer the confirmed mapping
+as a fixture in the consuming app, with its owner's approval. For manual mapping, use
+`/app/payment-field-mapping-builder`, map amount and available purposes, save, enable, and verify.
+Keep one enabled mapping per DocType. Update mappings before deleting referenced Custom Fields.
+
+#### Transaction Creation, Settlement, and Operations
+
+- Use ERPNext Payment Request only for its supported ERPNext reference types. A custom DocType
+  cannot be the Payment Request reference. On shared-ledger sites, mapped custom doctypes expose the
+  **Create Payment Transaction** desk action through `payment_reference_doctypes` and
+  `create_transaction_for_reference()`. Programmatic checkout uses `create_payment_transaction()`
+  with server-authoritative values and an `idempotency_key` when callers can retry; use
+  `ensure_reference_transaction()` to reuse an open Draft/Requested/Initiated attempt, then
+  `initiate_transaction()` to submit and obtain its checkout URL. Guest checkout must validate
+  reference ownership and amount; do not expose a generic guest endpoint.
+- The Web Form `accept` override can delegate to `get_payment_url()` only when its reference and
+  status semantics fit; avoid duplicate Integration Requests.
+- `on_payment_authorized` takes priority, followed by native Payment Request settlement, then
+  `payment_reference_settlers`. Compare provider amount and currency with server context before
+  settlement. Protect guest/reference paths with `guard_payment_reference()` and avoid overpaying.
+- Automatic capture receipts follow `auto_create_receipt` or the explicit transaction
+  `auto_receipt` choice. Payment Entry belongs to ERPNext Payment Request settlement, not a second
+  booking for the same funds.
+- With `enable_email_flow`, submitting a transaction queues buyer email after commit with a
+  reference PDF and checkout link. Otherwise expose **Open Checkout**. Verify PDF/email separately.
+- Desk actions include complete, cancel, and refund. Completion is an explicit reconciliation
+  action, not proof of provider payment. Refunds must validate refundable balance, use stable
+  provider idempotency, and record one receipt.
+- Scheduled `reconcile_stale_transactions()` and rate-limited guest
+  `reconcile_payment_status()` may call a duck-typed settings controller's
+  `reconcile_transaction()`. Inspect Payment Webhook Log and retry only through authenticated,
+  permission-checked operations. Analytics and health warnings must identify the underlying flow.
+
+Before any mode flip that activates gateway-only mode, follow Gate 2's data plan. `purge_ledger()`
+drops ledger tables only after checking them and hard-stops on non-empty tables. Back up and
+export/retain records first, or explicitly preserve ledger mode with `force_payment_ledger`.
+
+### Testing and Acceptance (Both Branches)
+
+Reuse repository patterns in `test_payment_receipts`, `test_authorize_reference`,
+`test_reference_field_map`, and mocked gateway controller tests. Keep provider calls mocked in
+automated tests. Verify callbacks, mappings, idempotency, permissions, and failure paths, then use
+the evidence ladder: browser E2E, separately approved sandbox transaction, and signed webhook,
+deduplication/retry, reconciliation, and settlement evidence. Record unavailable evidence and why.
+A mock or checkout redirect does not prove settlement or webhook handling.
 
 ## New Provider Workflow
 
