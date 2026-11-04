@@ -25,6 +25,7 @@ from payment_core.analytics_display import (
 	load_gateway_controllers,
 	resolve_since,
 )
+from payment_core.onboarding import sync_onboarding_steps
 
 OPEN_STATUSES = ("Draft", "Requested", "Initiated")
 
@@ -84,6 +85,9 @@ def get_analytics(
 	currencies = get_range_currencies(since)
 	currency = currency if currency in currencies else (currencies[0] if currencies else None)
 	controllers = load_gateway_controllers()
+	# keep the "Get payments ready" steps converged with real site state
+	# (same controller pass; the sync writes only on state change)
+	sync_onboarding_steps(controllers)
 	recent = get_recent_transactions(reference_doctype, recent_days)
 	for row in recent:
 		row["when_display"] = pretty_date(row.get("paid_at") or row["creation"])

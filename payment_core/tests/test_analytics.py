@@ -163,20 +163,23 @@ class TestAnalyticsWithoutLedger(FrappeTestCase):
 		self.assertTrue(data["mode_note"] or data["data_source"])
 
 
-class TestAnalyticsPageConfiguration(FrappeTestCase):
-	def test_analytics_page_allows_payment_roles(self):
+class TestAnalyticsHomeBlockConfiguration(FrappeTestCase):
+	def test_analytics_block_allows_payment_roles(self):
+		"""The workspace block is the analytics surface now (the separate page
+		is removed); its roles must match analytics.enforce_access, so users
+		who cannot call the API never see the block at all."""
 		json_path = frappe.get_app_path(
 			"payment_core",
 			"payment_core",
-			"page",
+			"custom_html_block",
 			"payment_analytics",
 			"payment_analytics.json",
 		)
-		with open(json_path) as page_file:
-			page = json.load(page_file)
+		with open(json_path) as block_file:
+			block = json.load(block_file)
 
 		self.assertEqual(
-			{row["role"] for row in page["roles"]},
+			{row["role"] for row in block["roles"]},
 			{"Payment Manager", "Payment User", "System Manager"},
 		)
 

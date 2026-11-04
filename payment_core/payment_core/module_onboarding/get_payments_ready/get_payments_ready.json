@@ -1,0 +1,33 @@
+{
+ "docstatus": 0,
+ "doctype": "Module Onboarding",
+ "name": "Get payments ready",
+ "title": "Get payments ready",
+ "module": "Payment Core",
+ "is_complete": 0,
+ "allow_roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Payment Manager"
+  }
+ ],
+ "steps": [
+  {
+   "step": "Connect a Payment Gateway",
+   "is_optional": 0
+  },
+  {
+   "step": "Set the Webhook Signing Secret",
+   "is_optional": 0
+  },
+  {
+   "step": "Take a Test Payment",
+   "is_optional": 0
+  }
+ ],
+ "modified": "2026-11-04 22:00:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator"
+}
