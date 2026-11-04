@@ -12,7 +12,7 @@ import frappe
 from frappe import _
 from frappe.model import default_fields
 from frappe.rate_limiter import rate_limit
-from frappe.utils import cint, flt, now_datetime, nowdate
+from frappe.utils import cint, flt, now_datetime
 
 from payment_core.payment_ledger.status_flow import (
 	OPEN_TRANSACTION_STATUSES,
@@ -969,7 +969,6 @@ def settle_payment_request(pr, controller=None):
 		return
 
 	with erpnext_app_import_guard():
-		from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 		from erpnext.accounts.doctype.payment_request.payment_request import (
 			get_existing_payment_entry,
 		)
@@ -1041,26 +1040,44 @@ def settle_payment_request(pr, controller=None):
 	# Guest checkout cannot read/write Sales Invoice / PE; elevate for
 	# settlement only (session-safe — see elevated_user).
 	with elevated_user():
-		payment_entry = get_payment_entry(
-			pr.reference_doctype,
-			pr.reference_name,
-			party_amount=pe_amount,
-			bank_account=pr.payment_account,
-		)
-		payment_entry.reference_no = pr.name
-		payment_entry.reference_date = nowdate()
+		# Build through ERPNext's own PaymentRequest.create_payment_entry.
+		# A bare get_payment_entry would run ERPNext's open-request
+		# allocation and attach the OLDEST open Payment Request of the
+		# reference to the PE (created_from_payment_request=False), so one
+		# payment could satisfy a different request than the one the buyer
+		# paid. create_payment_entry passes created_from_payment_request=
+		# True, allocates THIS request onto the PE references, and fills
+		# mode of payment, cost center, project and accounting dimensions
+		# exactly like a gateway payment made inside ERPNext.
+		# Partial charge: hand the charged amount to ERPNext's own builder by
+		# setting the in-memory outstanding to it. The builder then derives
+		# paid_amount, received_amount, the forex bank_amount and the per-term
+		# row splits from the charged amount. Lowering only allocated_amount
+		# on a full-outstanding PE would leave the un-received balance sitting
+		# in the bank account as an unallocated advance. The stored
+		# outstanding is never touched here - PE submit lowers it by what the
+		# PE actually allocates - and the in-memory value is restored so the
+		# caller's document is not corrupted.
+		stored_outstanding = flt(pr.outstanding_amount)
+		if not settles_fully:
+			pr.outstanding_amount = pe_amount
+		try:
+			payment_entry = pr.create_payment_entry(submit=False)
+		finally:
+			pr.outstanding_amount = stored_outstanding
 		payment_entry.insert(ignore_permissions=True)
 		payment_entry.submit()
-
-	# Close the Payment Request to match the money just booked (mirrors
-	# ERPNext's set_as_paid). Without this the PR stays "Requested", the
-	# idempotency guards above never engage, and a webhook + redirect +
-	# retry race can book a second full Payment Entry. The PE amount and the
-	# outstanding share the currency domain by construction above.
-	if settles_fully:
-		pr.db_set({"status": "Paid", "outstanding_amount": 0})
-	else:
-		pr.db_set("outstanding_amount", flt(original_outstanding - pe_amount, precision))
+		# PE submit runs update_payment_requests_as_per_pe_references, which
+		# lowers this request's outstanding, marks it Paid when fully
+		# allocated, and reverses both when the PE is cancelled — no manual
+		# status writes here, so a later PE cancel reopens the request
+		# consistently. The idempotency guards above rely on that status.
+		# Mirror ERPNext's set_as_paid end to end: a request flagged
+		# make_sales_invoice (shopping cart flow) gets its Sales Invoice
+		# booked right after the money lands, inside the same elevated block
+		# (guest checkout cannot write Sales Invoices either).
+		if getattr(pr, "make_sales_invoice", None):
+			pr.make_invoice()
 
 	# Gateway-specific stamps (provider ids on the PE) stay with the gateway.
 	if controller is not None and hasattr(controller, "annotate_payment_entry"):
@@ -1094,8 +1111,11 @@ def authorize_reference(reference_doctype, reference_docname, status_changed_to)
 	if not (reference_doctype and reference_docname):
 		return None
 	ref = frappe.get_doc(reference_doctype, reference_docname)
-	if hasattr(ref, "on_payment_authorized"):
-		return ref.run_method("on_payment_authorized", status_changed_to)
+	# Payment Request is settled by payment_core BEFORE the duck-typed
+	# dispatch: upstream ERPNext also defines on_payment_authorized on its
+	# PaymentRequest, but it only reacts to "Authorized"/"Completed" while
+	# the shared ledger authorizes with "Paid" — letting the duck-typed
+	# branch capture Payment Requests would silently skip the Payment Entry.
 	if ref.doctype == "Payment Request":
 		# never return the Payment Entry document settle_payment_request
 		# yields: callers treat this return as a redirect route, and a
@@ -1103,6 +1123,8 @@ def authorize_reference(reference_doctype, reference_docname, status_changed_to)
 		# finalize_request land on its own payment-success URL.
 		settle_payment_request(ref)
 		return None
+	if hasattr(ref, "on_payment_authorized"):
+		return ref.run_method("on_payment_authorized", status_changed_to)
 	settlers = frappe.get_hooks("payment_reference_settlers") or {}
 	result = None
 	for callable_path in settlers.get(reference_doctype, []):
