@@ -74,11 +74,14 @@ def load_gateway_controllers():
 		try:
 			controller = get_payment_gateway_controller(row.name)
 		except Exception:
-			# a broken settings doc is itself a health problem - surface it,
-			# never swallow it silently on the health dashboard
-			frappe.log_error(
-				title=f"Gateway health check failed for {row.name}",
-				message=frappe.get_traceback(),
+			# a broken settings doc is itself a health problem - surface it on
+			# the health dashboard ("could not be checked"). frappe.throw logs
+			# its message before raising, so drop it: otherwise every analytics
+			# load pops the error as a dialog (and an Error Log row would spam
+			# the log per page load).
+			frappe.clear_last_message()
+			frappe.logger().warning(
+				"gateway health check: could not resolve controller for %s", row.name, exc_info=True
 			)
 			results.append((row, None))
 			continue
@@ -94,7 +97,9 @@ def get_health_warnings(controllers=None):
 		controllers = load_gateway_controllers()
 	for row, controller in controllers:
 		if controller is None:
-			warnings.append(_("Gateway {0} could not be checked").format(frappe.bold(row.name)))
+			# plain text, no frappe.bold: both surfaces (the workspace block
+			# and API consumers) escape HTML, so markup renders literally
+			warnings.append(_("Gateway {0} could not be checked").format(row.name))
 			continue
 		if getattr(controller, "name", None) in seen:
 			continue  # several gateways may share one settings doc

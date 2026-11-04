@@ -95,13 +95,15 @@ guidance and the current standalone apps.
 
 ## Payment Core Desk Surface and Documentation
 
-Payment Core provides a public **Payment Core** workspace with shortcuts and links to payment
-records, field mapping, settings, and analytics. The standard desk pages are:
+Payment Core provides a public **Payment Core** workspace (onboarding card, payment summary,
+and ledger/gateway link cards) plus a **Payment Analytics** workspace for the full report. The
+standard desk surfaces are:
 
-- `/app/payment-analytics`: analytics for users with Payment Manager, Payment User, or System
-  Manager role. Its data source adapts to shared-ledger, gateway-only, and ERPNext flows; its
-  currency and period filters scope the displayed metrics.
-- `/app/gateway-settings`: gateway settings hub for System Managers. It discovers gateway settings
+- `/desk/payment-analytics`: full analytics workspace for users with Payment Manager, Payment User,
+  or System Manager role (same roles gate the summary block on the home). Its data source adapts
+  to shared-ledger, gateway-only, and ERPNext flows; its currency and period filters scope the
+  displayed metrics.
+- `/desk/gateway-settings`: gateway settings hub for System Managers. It discovers gateway settings
   from the registry and installed-app hooks, and reports health/setup warnings supplied by gateway
   controllers.
 
@@ -363,7 +365,7 @@ Reply with 1 or 2.
 ```
 
 For automated mapping, use the field and customer-typing checks below. For manual mapping, route the
-developer to `/app/payment-field-mapping-builder` and explain: select the reference DocType; map the
+developer to `/desk/payment-field-mapping-builder` and explain: select the reference DocType; map the
 required amount and any available payment purposes; save, enable, and verify against a sample
 document. The builder does not configure consuming-app hooks. Keep one enabled mapping per DocType.
 
@@ -401,7 +403,7 @@ Persist mappings through `save_mapping_builder_data()` or validated mapping rows
 create one unsubmitted draft transaction only on an explicitly selected local/dev site and verify
 both customer fields; remove only that known diagnostic draft afterward. Offer the confirmed mapping
 as a fixture in the consuming app, with its owner's approval. For manual mapping, use
-`/app/payment-field-mapping-builder`, map amount and available purposes, save, enable, and verify.
+`/desk/payment-field-mapping-builder`, map amount and available purposes, save, enable, and verify.
 Keep one enabled mapping per DocType. Update mappings before deleting referenced Custom Fields.
 
 #### Transaction Creation, Settlement, and Operations
