@@ -111,7 +111,30 @@ def after_install():
 		click.secho("* Installing Payment Web Form custom fields")
 		create_custom_fields(WEB_FORM_FIELDS)
 		frappe.clear_cache(doctype="Web Form")
+	_import_custom_blocks()
 	print_install_summary()
+
+
+def _import_custom_blocks():
+	"""Import the shipped workspace blocks directly.
+
+	During ``install-app`` the hooks cache predates this app, so the
+	``importable_doctypes`` entry that makes migrate walk the
+	``custom_html_block`` folder is not visible yet and the blocks would only
+	arrive on the first migrate — while the workspace home references them
+	from the very first render.
+	"""
+	import os
+
+	from frappe.modules.import_file import import_file_by_path
+
+	for folder in ("payment_analytics", "payment_summary"):
+		path = os.path.join(
+			frappe.get_app_path("payment_core"), "payment_core", "custom_html_block", folder, f"{folder}.json"
+		)
+		if os.path.exists(path):
+			# no explicit commit: the install flow commits after its hooks
+			import_file_by_path(path)
 
 
 def print_install_summary():
@@ -171,6 +194,12 @@ def print_install_summary():
 
 
 def before_uninstall():
+	# Custom HTML Block carries no module field, so the shipped blocks are
+	# not app-owned and would survive the uninstall as orphans
+	for block in ("Payment Analytics", "Payment Summary"):
+		if frappe.db.exists("Custom HTML Block", block):
+			click.secho(f"* Removing the {block} workspace block")
+			frappe.delete_doc("Custom HTML Block", block, force=True)
 	if not frappe.get_meta("Web Form").has_field("payments_tab"):
 		return
 	click.secho("* Uninstalling Payment Web Form custom fields")
