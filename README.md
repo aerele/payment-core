@@ -53,17 +53,19 @@ shared-ledger site, the workspace also provides Payment Transaction, Payment Rec
 Field Mapping access. Those ledger records and the field-mapping builder are unavailable in
 gateway-only mode.
 
-The **Payment Analytics** page is available at `/app/payment-analytics` to users with the Payment
-Manager, Payment User, or System Manager role. Choose a period, currency, or reference type to
-review gross captured volume, successful payment count, distinct customers, average payment, volume
-over time, payment methods, and recent, open, or failed payments. The page also reports gateway
-configuration warnings when the settings controller exposes them. Its data source adapts to the
+The full **Payment Analytics** report lives in its own **Payment Analytics** workspace
+(sidebar entry, `/desk/payment-analytics`) available to users with the Payment Manager, Payment
+User, or System Manager role. Choose a period, currency, or reference type to review gross captured
+volume, successful payment count, distinct customers, average payment, volume over time, payment
+methods, and recent, open, or failed payments. The workspace home instead shows a compact Payment
+Summary (last 30 days) with a link to the full report; it also reports gateway configuration
+warnings when the settings controller exposes them. Its data source adapts to the
 site: it reads the shared payment ledger when available and uses the installed gateway or ERPNext
 flow otherwise. KPI cards and the volume chart follow the selected currency and period. Recent and
 open payment lists have their own window controls. The Failed payments list is a latest-record list
 without a period or currency control.
 
-System Managers can open the **Gateway Settings** hub directly at `/app/gateway-settings`. The
+System Managers can open the **Gateway Settings** hub directly at `/desk/gateway-settings`. The
 workspace does not currently link to this page. The hub lists gateways registered on the site,
 displays their reported health and setup warnings, and links to each gateway app's settings. Use
 **Add Gateway** to select an installed gateway settings DocType, or **Manual Payment Gateway** when
@@ -124,7 +126,7 @@ bench get-app https://github.com/aerele/stripe-payment --branch develop
 bench --site <site-name> install-app stripe_payment
 ```
 
-Then visit `/app/gateway-settings`, click **Add Gateway**, select the gateway's settings DocType, and
+Then visit `/desk/gateway-settings`, click **Add Gateway**, select the gateway's settings DocType, and
 configure its credentials. Refer to each gateway app's README for provider-specific setup, webhooks,
 and test keys.
 
@@ -133,7 +135,7 @@ and test keys.
 ### ERPNext sites (gateway-only mode)
 
 1. **Install** Payment Core and a gateway app (see above).
-2. **Configure the gateway** at `/app/gateway-settings`.
+2. **Configure the gateway** at `/desk/gateway-settings`.
 3. **Create a supported ERPNext reference** from the custom app's record, normally a Sales Order or
    Sales Invoice, then raise the Payment Request against that ERPNext document. ERPNext does not
    allow Payment Request to target an arbitrary custom DocType.
@@ -146,8 +148,8 @@ lifecycle and declare `uses_own_payment_flow = True`; follow the gateway-only in
 ### Plain Frappe sites (shared-ledger mode)
 
 1. **Install** Payment Core and a gateway app (see above).
-2. **Configure the gateway** at `/app/gateway-settings`.
-3. **Map a DocType** at `/app/payment-field-mapping-builder`, selecting the payable custom DocType
+2. **Configure the gateway** at `/desk/gateway-settings`.
+3. **Map a DocType** at `/desk/payment-field-mapping-builder`, selecting the payable custom DocType
    and mapping its amount and other available payment fields.
 4. **Test a payment** through a compatible Web Form or call
    `payment_core.utils.create_payment_transaction` from the custom app.

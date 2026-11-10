@@ -1,9 +1,13 @@
 {
  "app": "payment_core",
- "charts": [],
- "content": "[{\"id\": \"UoMlbxYkxP\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Payment Core</b></span>\", \"col\": 12}}, {\"id\": \"payment-analytics-shortcut\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Analytics\", \"col\": 4}}, {\"id\": \"payment-core-spacer\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"payment-core-quick-access\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Quick Access</b></span>\", \"col\": 12}}, {\"id\": \"payment-transaction-shortcut\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Transaction\", \"col\": 3}}, {\"id\": \"payment-receipt-shortcut\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Receipt\", \"col\": 3}}, {\"id\": \"payment-gateway-shortcut\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Gateway\", \"col\": 3}}, {\"id\": \"payment-field-mapping-shortcut\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Payment Field Mapping\", \"col\": 3}}]",
+ "content": "[{\"id\": \"payment-core-header\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Payment Core</b></span>\", \"col\": 12}}, {\"id\": \"payment-onboarding\", \"type\": \"onboarding\", \"data\": {\"onboarding_name\": \"Get payments ready\", \"col\": 12}}, {\"id\": \"payment-summary-block\", \"type\": \"custom_block\", \"data\": {\"custom_block_name\": \"Payment Summary\", \"col\": 12}}, {\"id\": \"payment-explore-header\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Explore</b></span>\", \"col\": 12}}, {\"id\": \"payment-ledger-card\", \"type\": \"card\", \"data\": {\"card_name\": \"Payment Ledger\", \"col\": 6}}, {\"id\": \"payment-gateway-card\", \"type\": \"card\", \"data\": {\"card_name\": \"Gateways & Settings\", \"col\": 6}}]",
  "creation": "2026-09-17 00:00:00.000000",
- "custom_blocks": [],
+ "custom_blocks": [
+  {
+   "custom_block_name": "Payment Summary",
+   "label": "Payment Summary"
+  }
+ ],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
@@ -16,21 +20,19 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Payment Gateway",
-   "link_count": 0,
-   "link_to": "Payment Gateway",
-   "link_type": "DocType",
-   "on_board": 0,
-   "type": "Link"
+   "label": "Payment Ledger",
+   "link_count": 4,
+   "onboard": 0,
+   "type": "Card Break"
   },
   {
    "hidden": 0,
    "is_query_report": 0,
    "label": "Payment Transaction",
    "link_count": 0,
-   "link_to": "Payment Transaction",
    "link_type": "DocType",
-   "on_board": 0,
+   "link_to": "Payment Transaction",
+   "onboard": 0,
    "type": "Link"
   },
   {
@@ -38,9 +40,9 @@
    "is_query_report": 0,
    "label": "Payment Receipt",
    "link_count": 0,
-   "link_to": "Payment Receipt",
    "link_type": "DocType",
-   "on_board": 0,
+   "link_to": "Payment Receipt",
+   "onboard": 0,
    "type": "Link"
   },
   {
@@ -48,9 +50,47 @@
    "is_query_report": 0,
    "label": "Payment Field Mapping",
    "link_count": 0,
-   "link_to": "payment-field-mapping-builder",
    "link_type": "Page",
-   "on_board": 0,
+   "link_to": "payment-field-mapping-builder",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Payment Settlement Summary",
+   "link_count": 0,
+   "link_type": "Report",
+   "link_to": "Payment Settlement Summary",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Gateways & Settings",
+   "link_count": 4,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Gateway",
+   "link_count": 0,
+   "link_type": "DocType",
+   "link_to": "Payment Gateway",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Gateway Settings",
+   "link_count": 0,
+   "link_type": "Page",
+   "link_to": "gateway-settings",
+   "onboard": 0,
    "type": "Link"
   },
   {
@@ -58,9 +98,9 @@
    "is_query_report": 0,
    "label": "Payment Webhook Log",
    "link_count": 0,
-   "link_to": "Payment Webhook Log",
    "link_type": "DocType",
-   "on_board": 0,
+   "link_to": "Payment Webhook Log",
+   "onboard": 0,
    "type": "Link"
   },
   {
@@ -68,55 +108,23 @@
    "is_query_report": 0,
    "label": "Payment Core Settings",
    "link_count": 0,
-   "link_to": "Payment Core Settings",
    "link_type": "DocType",
-   "on_board": 0,
+   "link_to": "Payment Core Settings",
+   "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2026-09-18 05:00:00.000000",
+ "modified": "2026-11-05 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Payment Core",
  "name": "Payment Core",
- "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
  "quick_lists": [],
  "roles": [],
  "sequence_id": 22.0,
- "shortcuts": [
-  {
-   "color": "Grey",
-   "label": "Payment Transaction",
-   "link_to": "Payment Transaction",
-   "type": "DocType"
-  },
-  {
-   "color": "Green",
-   "label": "Payment Receipt",
-   "link_to": "Payment Receipt",
-   "type": "DocType"
-  },
-  {
-   "color": "Blue",
-   "label": "Payment Gateway",
-   "link_to": "Payment Gateway",
-   "type": "DocType"
-  },
-  {
-   "color": "Orange",
-   "label": "Payment Field Mapping",
-   "link_to": "payment-field-mapping-builder",
-   "type": "Page"
-  },
-  {
-   "color": "Purple",
-   "label": "Payment Analytics",
-   "link_to": "payment-analytics",
-   "type": "Page"
-  }
- ],
+ "shortcuts": [],
  "title": "Payment Core",
  "type": "Workspace"
 }

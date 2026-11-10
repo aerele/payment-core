@@ -1,0 +1,17 @@
+{
+ "action": "Go to Page",
+ "action_label": "Open Gateway Settings",
+ "description": "Add a gateway (Stripe, Razorpay, ...) on the Gateway Settings hub and enable it for your payment forms.",
+ "docstatus": 0,
+ "doctype": "Onboarding Step",
+ "is_complete": 0,
+ "is_skipped": 0,
+ "modified": "2026-11-04 23:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Connect a Payment Gateway",
+ "owner": "Administrator",
+ "path": "gateway-settings",
+ "show_full_form": 0,
+ "title": "Connect a gateway",
+ "validate_action": 0
+}

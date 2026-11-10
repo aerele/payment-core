@@ -13,8 +13,8 @@ before_uninstall = "payment_core.install.before_uninstall"
 
 # Gateway-only mode: suppress the shared ledger from schema sync, purge leftovers.
 before_migrate = ["payment_core.ledger_gate.suppress_ledger_module"]
-after_migrate = ["payment_core.ledger_gate.purge_ledger"]
-after_sync = ["payment_core.ledger_gate.purge_ledger"]
+after_migrate = ["payment_core.ledger_gate.purge_ledger", "payment_core.onboarding.sync_onboarding_steps"]
+after_sync = ["payment_core.ledger_gate.purge_ledger", "payment_core.onboarding.sync_onboarding_steps"]
 
 # Web Form payments, plus the ERPNext-only Payment Request extension.
 extend_doctype_class = {
@@ -99,7 +99,8 @@ doctype_list_js = {"Payment Field Mapping": "public/js/payment_field_mapping_lis
 # website_generators = ["Web Page"]
 
 # automatically load and sync documents of this doctype from downstream apps
-# importable_doctypes = [doctype_1]
+# (the Payment Analytics workspace block ships as a Custom HTML Block fixture)
+importable_doctypes = ["Custom HTML Block"]
 
 # Jinja
 # ----------

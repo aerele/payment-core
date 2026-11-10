@@ -1,0 +1,17 @@
+{
+ "action": "Go to Page",
+ "action_label": "Open Payment Analytics",
+ "description": "Pay a small test order end to end and watch it land in the Payment Analytics report.",
+ "docstatus": 0,
+ "doctype": "Onboarding Step",
+ "is_complete": 0,
+ "is_skipped": 0,
+ "modified": "2026-11-04 23:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Take a Test Payment",
+ "owner": "Administrator",
+ "path": "payment-analytics",
+ "show_full_form": 0,
+ "title": "Take a test payment",
+ "validate_action": 0
+}
