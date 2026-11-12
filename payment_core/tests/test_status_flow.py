@@ -126,6 +126,147 @@ class TestStatusFlow(FrappeTestCase):
 			cancel_payment_transaction(transaction)
 		self.assertEqual(frappe.db.get_value("Payment Transaction", transaction, "status"), "Paid")
 
+	def test_cancel_blocked_when_payment_lands_after_form_load(self):
+		"""A webhook can settle the payment between the form's load and the
+		cancel request; the stale in-memory status must not let it through
+		(auto_receipt off => no receipts backstop)."""
+		create_payment_gateway("Test")
+		reference = _make_reference()
+		transaction = _make_transaction(reference)
+
+		controller = MagicMock()
+		controller.get_payment_url = lambda **kwargs: "https://checkout.test/pay"
+		with patch("payment_core.utils.get_payment_gateway_controller", return_value=controller):
+			doc = frappe.get_doc("Payment Transaction", transaction)
+			doc.submit()
+
+		# the payment lands behind the loaded document's back
+		update_payment_transaction(transaction, status="Paid")
+
+		with self.assertRaises(frappe.ValidationError):
+			doc.cancel()
+		self.assertEqual(frappe.db.get_value("Payment Transaction", transaction, "status"), "Paid")
+		self.assertEqual(frappe.db.get_value("Payment Transaction", transaction, "docstatus"), 1)
+
+	def _submitted_transaction(self, reference):
+		"""Create + submit a transaction with a mocked gateway (desk-style)."""
+		create_payment_gateway("Test")
+		transaction = create_payment_transaction(
+			reference_doctype="Note",
+			reference_docname=reference,
+			gateway="Stripe:Test",
+			amount=100,
+			currency="INR",
+		).name
+		controller = MagicMock()
+		controller.get_payment_url = lambda **kwargs: "https://checkout.test/pay"
+		with patch("payment_core.utils.get_payment_gateway_controller", return_value=controller):
+			frappe.get_doc("Payment Transaction", transaction).submit()
+		return transaction
+
+	def test_amendment_blocked_when_reference_already_paid(self):
+		"""An amendment bypasses ensure_reference_transaction; before_submit
+		must re-run its already-paid guard: another transaction Paid for the
+		same reference means no new checkout may open."""
+		reference = _make_reference()
+		first = self._submitted_transaction(reference)
+		second = self._submitted_transaction(reference)
+
+		PaymentTransactionStatus.set_status(first, "Paid")
+		frappe.get_doc("Payment Transaction", second).cancel()
+
+		amended = frappe.copy_doc(frappe.get_doc("Payment Transaction", second))
+		amended.amended_from = second
+		amended.docstatus = 0
+		amended.insert(ignore_permissions=True)
+
+		with self.assertRaises(frappe.ValidationError):
+			amended.submit()
+
+	def test_amendment_capped_to_open_balance(self):
+		"""With a mapped amount field, the reference total is the ceiling: an
+		amendment copying a stale full amount is capped to the open balance
+		(reference total minus captured receipts)."""
+		reference = _make_reference()
+		paid_partially = self._submitted_transaction(reference)
+		_capture(paid_partially, amount=40)
+		cancelled = self._submitted_transaction(reference)
+		frappe.get_doc("Payment Transaction", cancelled).cancel()
+
+		amended = frappe.copy_doc(frappe.get_doc("Payment Transaction", cancelled))
+		amended.amended_from = cancelled
+		amended.docstatus = 0
+		amended.insert(ignore_permissions=True)
+
+		controller = MagicMock()
+		controller.get_payment_url = lambda **kwargs: "https://checkout.test/pay"
+		transaction_module = "payment_core.payment_ledger.doctype.payment_transaction.payment_transaction"
+		with (
+			patch("payment_core.utils.get_payment_gateway_controller", return_value=controller),
+			# a Note exposes no amount field; pretend the reference maps 100
+			patch(f"{transaction_module}.get_reference_amount", return_value=(100, "INR")),
+		):
+			amended.submit()
+		self.assertEqual(flt(frappe.db.get_value("Payment Transaction", amended.name, "amount")), 60.0)
+
+	def test_amendment_without_mapped_amount_not_double_discounted(self):
+		"""Own-flow reference (no mapped amount): the copied amount is the
+		caller's authority — an earlier capture on the same reference must
+		not be subtracted from it a second time."""
+		reference = _make_reference()
+		paid_partially = self._submitted_transaction(reference)
+		_capture(paid_partially, amount=40)
+		cancelled = self._submitted_transaction(reference)
+		frappe.get_doc("Payment Transaction", cancelled).cancel()
+
+		amended = frappe.copy_doc(frappe.get_doc("Payment Transaction", cancelled))
+		amended.amended_from = cancelled
+		amended.docstatus = 0
+		amended.insert(ignore_permissions=True)
+
+		controller = MagicMock()
+		controller.get_payment_url = lambda **kwargs: "https://checkout.test/pay"
+		with patch("payment_core.utils.get_payment_gateway_controller", return_value=controller):
+			amended.submit()
+		self.assertEqual(flt(frappe.db.get_value("Payment Transaction", amended.name, "amount")), 100.0)
+
+	def test_duplicate_starts_clean(self):
+		"""Duplicate respects ``no_copy`` (server amend ignores it): the
+		volatile provider fields must not carry over, and the unique
+		idempotency key must be empty so the copy can save."""
+		volatile = {
+			"status",
+			"checkout_url",
+			"provider_transaction_id",
+			"paid_at",
+			"error_message",
+			"reference_authorized",
+			"idempotency_key",
+			"metadata",
+		}
+		no_copy = {f.fieldname for f in frappe.get_meta("Payment Transaction").fields if f.no_copy}
+		self.assertTrue(volatile <= no_copy, f"missing no_copy: {volatile - no_copy}")
+
+		reference = _make_reference()
+		transaction = self._submitted_transaction(reference)
+
+		# the desk Duplicate action clears no_copy fields client-side; mirror it
+		duplicate = frappe.copy_doc(frappe.get_doc("Payment Transaction", transaction))
+		duplicate.docstatus = 0
+		for fieldname in volatile:
+			duplicate.set(fieldname, None)
+
+		duplicate.insert(ignore_permissions=True)
+		row = frappe.db.get_value(
+			"Payment Transaction",
+			duplicate.name,
+			["status", "checkout_url", "provider_transaction_id", "idempotency_key"],
+			as_dict=True,
+		)
+		self.assertIsNone(row.checkout_url)
+		self.assertIsNone(row.provider_transaction_id)
+		self.assertIsNone(row.idempotency_key)
+
 	def test_cancelled_transaction_is_frozen(self):
 		reference = _make_reference()
 		transaction = _make_transaction(reference)
@@ -241,6 +382,55 @@ class TestCancelPersistence(FrappeTestCase):
 			doc.cancel()
 
 		# assert against the database: only a db_set survives on_cancel
+		self.assertEqual(frappe.db.get_value("Payment Transaction", transaction, "status"), "Cancelled")
+
+	def test_transactions_get_series_names(self):
+		"""The doctype's autoname must be the ``naming_series:`` syntax: the
+		legacy bare ``naming_series`` string matches no naming rule on current
+		Frappe and silently falls back to hash names."""
+		reference = _make_reference()
+		transaction = _make_transaction(reference, amount=100)
+
+		self.assertTrue(str(transaction).startswith("PAY-TRN-"), transaction)
+
+	def test_amended_transaction_starts_fresh(self):
+		"""Cancel -> Amend must not freeze the amendment at "Cancelled":
+		the copy starts over from Draft with a clean provider slate, and
+		submit re-requests a new gateway session (fresh checkout URL)."""
+		create_payment_gateway("Test")
+		reference = _make_reference()
+		transaction = _make_transaction(reference)
+
+		urls = iter(["https://checkout.test/first", "https://checkout.test/second"])
+		controller = MagicMock()
+		controller.get_payment_url = lambda **kwargs: next(urls)
+		with patch("payment_core.utils.get_payment_gateway_controller", return_value=controller):
+			doc = frappe.get_doc("Payment Transaction", transaction)
+			doc.submit()
+			doc.provider_transaction_id = "cs_test_old"
+			doc.db_set("provider_transaction_id", "cs_test_old")
+			doc.cancel()
+
+			# desk Amend: a client-side copy that carries every field verbatim
+			# (the client resets only docstatus — copy_doc keeps it at 2)
+			amended = frappe.copy_doc(doc)
+			amended.amended_from = doc.name
+			amended.docstatus = 0
+			amended.insert(ignore_permissions=True)
+
+			self.assertEqual(amended.status, PaymentTransactionStatus.DRAFT)
+			self.assertIsNone(amended.checkout_url)
+			self.assertIsNone(amended.provider_transaction_id)
+			self.assertIsNone(amended.idempotency_key)
+
+			amended.submit()
+
+		row = frappe.db.get_value(
+			"Payment Transaction", amended.name, ["status", "checkout_url"], as_dict=True
+		)
+		self.assertEqual(row.status, PaymentTransactionStatus.REQUESTED)
+		self.assertEqual(row.checkout_url, "https://checkout.test/second")
+		# the cancelled original keeps its own terminal history
 		self.assertEqual(frappe.db.get_value("Payment Transaction", transaction, "status"), "Cancelled")
 
 

@@ -10,7 +10,8 @@ frappe.ui.form.on("Payment Transaction", {
 });
 
 function set_status_indicator(frm) {
-	const colors = {
+	// single source of the status palette: the list view reuses this map
+	frappe.payment_core_status_colors = {
 		Draft: "grey",
 		Requested: "orange",
 		Initiated: "grey",
@@ -20,7 +21,7 @@ function set_status_indicator(frm) {
 		Cancelled: "grey",
 		Refunded: "purple",
 	};
-	const color = colors[frm.doc.status];
+	const color = frappe.payment_core_status_colors[frm.doc.status];
 	if (color) {
 		frm.page.set_indicator(frm.doc.status, color);
 	}

@@ -9,7 +9,10 @@ from frappe.utils import flt
 from payment_core.payment_ledger.status_flow import PaymentTransactionStatus
 from payment_core.utils import (
 	email_flow_enabled,
+	get_amount_precision,
+	get_capture_balance,
 	get_customer_doctype,
+	get_reference_amount,
 	resolve_gateway_controller,
 	send_payment_email,
 )
@@ -20,6 +23,25 @@ from payment_core.utils import (
 class PaymentTransaction(Document):
 	"""Payment attempt linked to any Frappe document (Payment Request-style
 	lifecycle: Draft -> Requested on submit, receipts drive Paid/Partially Paid)."""
+
+	def before_insert(self):
+		if self.amended_from:
+			# Frappe's amend copies the cancelled original verbatim (``no_copy``
+			# is ignored on amend), which would freeze the amendment at
+			# "Cancelled" — the status flow allows nothing after it. The
+			# amendment is a fresh attempt: start over from Draft with a clean
+			# provider slate; the cancelled original keeps its own terminal
+			# history. Submit then re-requests a new gateway session.
+			# before_insert, not validate: the reset belongs to the creation
+			# of the amendment, not to every save of the draft.
+			self.status = PaymentTransactionStatus.DRAFT
+			self.checkout_url = None
+			self.provider_transaction_id = None
+			self.paid_at = None
+			self.error_message = None
+			self.reference_authorized = 0
+			self.idempotency_key = None  # unique field; the copy must not collide
+			self.metadata = "{}"  # old provider ids (session, integration request)
 
 	def validate(self):
 		if self.customer and not self.customer_doctype:
@@ -35,10 +57,54 @@ class PaymentTransaction(Document):
 			frappe.throw(_("A payment gateway is required to submit a transaction"))
 		if flt(self.amount) <= 0:
 			frappe.throw(_("Payment amount must be greater than zero"))
+		self.check_reference_payable()
 		if not self.status or self.status == PaymentTransactionStatus.DRAFT:
 			self.status = PaymentTransactionStatus.REQUESTED
 		if PaymentTransactionStatus.is_open(self.status):
 			self.create_payment_url()
+
+	def check_reference_payable(self):
+		"""The same guards ``ensure_reference_transaction`` enforces when it
+		creates a transaction — a desk submission (or an amendment, which
+		bypasses that helper) must not open a checkout for an order another
+		transaction has already paid, or for more than the open balance.
+		Settlement updates (``update_payment_transaction``) set
+		``flags.settlement_update`` and skip this: they report money that
+		already moved, including several receiptless paid attempts
+		(apps keeping their own books)."""
+		if self.flags.settlement_update:
+			return
+		# already-paid guard across ALL gateways (this row excluded: its own
+		# cancelled history is not money)
+		if frappe.db.exists(
+			"Payment Transaction",
+			{
+				"reference_doctype": self.reference_doctype,
+				"reference_docname": self.reference_docname,
+				"status": "Paid",
+				"name": ("!=", self.name or ""),
+			},
+		):
+			frappe.throw(_("This payment has already been made"))
+		if frappe.db.table_exists("Payment Receipt"):
+			# partial payments: only the open balance is chargeable — the
+			# mapped reference amount (when the doctype exposes one) is the
+			# ceiling, and the copied amendment amount may be stale. Without
+			# a mapped amount the caller's own amount is the authority
+			# (own-flow apps); subtracting captures from it again would
+			# double-count when it was already capped at its origin.
+			reference_amount, _currency = get_reference_amount(self.reference_doctype, self.reference_docname)
+			if reference_amount is not None:
+				balance = get_capture_balance(self.reference_doctype, self.reference_docname)
+				precision = get_amount_precision()
+				open_balance = flt(
+					flt(reference_amount, precision) - flt(balance["net"], precision), precision
+				)
+				if open_balance <= 0:
+					frappe.throw(_("This payment has already been made"))
+				if flt(self.amount) > open_balance:
+					self.amount = open_balance
+					self.outstanding_amount = open_balance
 
 	def on_submit(self):
 		self.queue_payment_email()
@@ -74,8 +140,11 @@ class PaymentTransaction(Document):
 
 	def before_cancel(self):
 		# settled money cannot be cancelled away - refund instead; with
-		# auto_receipt off a Paid row has no receipts, so check the status too
-		if PaymentTransactionStatus.is_settled(self.status):
+		# auto_receipt off a Paid row has no receipts, so check the status too.
+		# The status is re-read under a row lock: a webhook may have settled
+		# the payment between this document's load and the cancel request.
+		locked_status = frappe.db.get_value("Payment Transaction", self.name, "status", for_update=True)
+		if PaymentTransactionStatus.is_settled(locked_status or self.status):
 			frappe.throw(_("A settled transaction cannot be cancelled. Refund it instead."))
 		if frappe.db.exists("Payment Receipt", {"payment_transaction": self.name, "docstatus": 1}):
 			frappe.throw(
