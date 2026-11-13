@@ -700,7 +700,11 @@ def update_payment_transaction(
 		doc.db_set("paid_at", paid_at or now_datetime())
 	if doc.docstatus == 0 and doc.status == PaymentTransactionStatus.PAID:
 		# settlement reached a Draft (tests or legacy callers that never went
-		# through submission): book it as the submitted voucher it now is
+		# through submission): book it as the submitted voucher it now is.
+		# The flag skips check_reference_payable: this submit reports money
+		# that already moved (possibly one of several receiptless attempts),
+		# it does not open a new checkout.
+		doc.flags.settlement_update = True
 		doc.submit()
 	if applied and doc.status == PaymentTransactionStatus.PAID:
 		# first transition into Paid (a re-delivery must not re-run the
