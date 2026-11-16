@@ -7,3 +7,4 @@
 payment_core.patches.reassign_shared_modules
 payment_core.patches.fix_web_form_accept_payment_field
 payment_core.patches.remove_analytics_page
+payment_core.patches.backfill_gateway_mode_of_payment

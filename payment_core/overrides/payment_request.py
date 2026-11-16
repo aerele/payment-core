@@ -21,9 +21,35 @@ erpnext_payment_request._is_v2_gateway = is_v2_gateway
 class PaymentRequest(erpnext_payment_request.PaymentRequest):
 	"""Payment Request whose gateway resolution is owned by payment_core.
 
-	All methods are inherited from ERPNext as-is; only `create_subscription`
-	is overridden (function-local payments import, not redirectable).
+	Gateway resolution is redirected at module level (above); the class only
+	overrides `create_subscription` (function-local payments import) and adds
+	`validate` to stamp the gateway's Mode of Payment when the caller didn't
+	set one — so it flows onto the Payment Entry through ERPNext's own copy
+	in `create_payment_entry`.
 	"""
+
+	def validate(self):
+		# stamp BEFORE super().validate() so ERPNext's own
+		# validate_enabled_mode_of_payment also covers the stamped value
+		self.set_default_mode_of_payment()
+		super().validate()
+
+	def set_default_mode_of_payment(self):
+		"""Stamp the gateway's auto-created Mode of Payment when unset.
+
+		ERPNext copies `self.mode_of_payment` onto the Payment Entry
+		(payment_request.py create_payment_entry), which makes the gateway
+		visible in Bank Reconciliation and POS reports. Only enabled Modes
+		of Payment are stamped — a disabled one would make the Payment
+		Entry fail after the buyer already paid.
+		"""
+		if self.mode_of_payment or not self.payment_gateway:
+			return
+		from payment_core.mode_of_payment import get_mode_of_payment_for_gateway
+
+		mop = get_mode_of_payment_for_gateway(self.payment_gateway)
+		if mop:
+			self.mode_of_payment = mop
 
 	def create_subscription(self, payment_provider, gateway_controller, data):
 		# Dispatch via payment_core's registry, not payments.stripe_integration.

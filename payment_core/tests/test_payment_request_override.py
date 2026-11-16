@@ -439,6 +439,33 @@ class TestPaymentRequestOverride(FrappeTestCase):
 
 		make_invoice.assert_not_called()
 
+	def test_settle_stamps_gateway_mode_of_payment(self):
+		"""The gateway's auto-created Mode of Payment is stamped onto the
+		Payment Request by the override's validate, and flows from there onto
+		the Payment Entry through ERPNext's own builder — making gateway
+		payments visible in Bank Reconciliation and POS reports. The
+		fixtures' default Payment Gateway Account (PayTest) has already
+		triggered this PR's doc_events hook, so the MOP exists."""
+		from payment_core.mode_of_payment import get_mode_of_payment_for_gateway
+
+		pr = self._make_single_currency_pr()
+
+		gateway = frappe.db.get_value("Payment Request", pr.name, "payment_gateway")
+		expected = get_mode_of_payment_for_gateway(gateway)
+		self.assertTrue(expected, "the fixtures' gateway must have an enabled Mode of Payment")
+
+		# the override's validate stamped it when make_payment_request inserted
+		self.assertEqual(frappe.db.get_value("Payment Request", pr.name, "mode_of_payment"), expected)
+
+		controller = MagicMock()
+		controller.get_charged_amount = MagicMock(return_value=100.0)
+		with patch("payment_core.utils.get_payment_gateway_controller", return_value=controller):
+			payment_entry = payment_core_utils.settle_payment_request(pr, controller=controller)
+
+		self.assertEqual(
+			frappe.db.get_value("Payment Entry", payment_entry.name, "mode_of_payment"), expected
+		)
+
 	def test_partial_charge_books_only_what_was_charged(self):
 		"""A real, unmocked partial settlement: a 40 charge on a 100 request
 		must book paid_amount == received_amount == 40 with zero unallocated
