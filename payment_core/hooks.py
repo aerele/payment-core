@@ -30,6 +30,9 @@ doc_events = {
 	"Custom Field": {
 		"on_trash": "payment_core.field_mapping.on_custom_field_trash",
 	},
+	"Payment Gateway Account": {
+		"on_update": "payment_core.mode_of_payment.sync_for_gateway_account",
+	},
 	"Payment Transaction": {
 		"on_update": "payment_core.notifications.on_transaction_update",
 	},
