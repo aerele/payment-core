@@ -15,6 +15,12 @@ class PaymentWebForm(WebForm):
 		if getattr(self, "accept_payment", False):
 			self.validate_payment_amount()
 
+	def validate_submission(self, doc, uploaded_fields=None):
+		super().validate_submission(doc, uploaded_fields=uploaded_fields)
+
+		if self.get("accept_payment") and not doc.get("paid"):
+			doc.run_method("validate_payment")
+
 	def validate_payment_amount(self):
 		if self.amount_based_on_field and not self.amount_field:
 			frappe.throw(frappe._("Please select a Amount Field."))
@@ -70,8 +76,7 @@ def accept(
 
 	# Keep accepting for_payment for browser/API compatibility, but do not trust it
 	# to decide whether a configured payment can be skipped.
-	if not payment_web_form.accept_payment or saved_doc.get("paid"):
+	if not payment_web_form.get("accept_payment") or saved_doc.get("paid"):
 		return response_doc
 
-	saved_doc.run_method("validate_payment")
 	return payment_web_form.get_payment_gateway_url(saved_doc)
